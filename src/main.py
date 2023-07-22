@@ -1,5 +1,8 @@
 from typing import Union
 import time
+import asyncio
+
+import aioredis
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -7,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.routers import client, api
 from src.utils.common import print_project_initialization
+from src.utils.redis import initialize
 
 app = FastAPI()
 
@@ -20,6 +24,7 @@ app.include_router(api.router)
 @app.on_event("startup")
 async def startup_event():
     print_project_initialization()
+    await initialize()
 
 
 @app.middleware("http")
