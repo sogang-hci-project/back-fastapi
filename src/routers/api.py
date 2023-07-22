@@ -4,8 +4,12 @@ from typing import Dict
 from fastapi.responses import PlainTextResponse, StreamingResponse
 import io
 from pydantic import BaseModel
+from datetime import datetime
+import json
+
 from src.utils.api import papago_translate, deepl_translate, clova_text_to_speech
 from src.controllers.greeting import greeting_request_response
+from src.utils.redis import redisEndPoint
 
 
 class ClientRequest(BaseModel):
@@ -23,6 +27,10 @@ UTILITY ROUTING
 async def handle_request_zero():
     try:
         id = str(uuid.uuid4())
+        current = datetime.now().strftime("%m-%d %H:%M:%S")
+        data = {"init": current}
+        await redisEndPoint.set(f"sess:{id}", value=json.dumps(data))
+
         return {
             "data": {
                 "sessionID": id,
