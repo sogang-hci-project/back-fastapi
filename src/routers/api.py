@@ -3,15 +3,25 @@ import uuid
 from typing import Dict
 from fastapi.responses import PlainTextResponse, StreamingResponse
 import io
+from pydantic import BaseModel
 from src.utils.api import papago_translate, deepl_translate, clova_text_to_speech
+from src.controllers.greeting import greeting_request_response
+
+
+class ClientRequest(BaseModel):
+    user: str
+
 
 router = APIRouter()
+
+"""
+UTILITY ROUTING
+"""
 
 
 @router.post("/api/v1/greeting/0", tags=["api"])
 async def handle_request_zero():
     try:
-        # result = 1 / 0
         id = str(uuid.uuid4())
         return {
             "data": {
@@ -25,19 +35,26 @@ async def handle_request_zero():
         raise HTTPException(status_code=500, detail="router/api: [greeting/0] failed")
 
 
-@router.post("/api/v1/greeting/1", tags=["api"])
-async def handle_id_request():
+@router.post("/api/v1/greeting/{stage}")
+async def handle_greeting_request(
+    stage: int,
+    req: ClientRequest,
+    sessionID: str,
+    lang: str,
+):
     try:
-        return {
-            "data": {
-                "contents": {"agent": {"hello"}},
-                "currentStage": "greeting/1",
-                "nextStage": "greeting/2",
-            }
-        }
+        response = await greeting_request_response(
+            stage, user=req.user, sessionID=sessionID, lang=lang
+        )
+        return response
     except Exception as e:
         print("🔥 router/api: [greeting/1] failed 🔥", e)
         raise HTTPException(status_code=500, detail="router/api: [greeting/1] failed")
+
+
+"""
+UTILITY ROUTING
+"""
 
 
 @router.post("/api/v1/util/translate", tags=["api"])
@@ -64,7 +81,6 @@ async def handle_translate(request: Request) -> Dict[str, str]:
 async def handle_text_to_speech(request: Request, response_class=PlainTextResponse):
     try:
         data = await request.json()
-        print(data)
         text = data.get("text", "")
         voice = data.get("voice", "")
 
@@ -75,5 +91,5 @@ async def handle_text_to_speech(request: Request, response_class=PlainTextRespon
 
         return StreamingResponse(io.BytesIO(decoded_audio), media_type="audio/mpeg")
     except Exception as e:
-        print("🔥 util controller error occur 🔥", e)
+        print("🔥 router/api: [util/texttospeech] failed 🔥", e)
         raise HTTPException(status_code=500, detail="Internal server error.")

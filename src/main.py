@@ -1,10 +1,12 @@
 from typing import Union
+import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.routers import client, api
+from src.utils.common import print_project_initialization
 
 app = FastAPI()
 
@@ -13,6 +15,20 @@ app.add_middleware(
 )
 app.include_router(client.router)
 app.include_router(api.router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    print_project_initialization()
+
+
+@app.middleware("http")
+async def log_request(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    return response
 
 
 @app.get("/")
