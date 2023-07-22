@@ -1,8 +1,16 @@
 import aioredis
+from src.utils.common import throw_exception
+
+redis = aioredis.from_url("redis://localhost")
+
+
+class CustomError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(message)
 
 
 async def initialize():
-    redis = aioredis.from_url("redis://localhost")
-    await redis.set("my-key", "value")
-    value = await redis.get("my-key")
-    print(value)
+    res = await redis.ping()
+    if res == False:
+        throw_exception("Redis initialization failed", 500)

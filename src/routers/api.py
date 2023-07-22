@@ -26,8 +26,8 @@ async def handle_request_zero():
         return {
             "data": {
                 "sessionID": id,
-                "currentStage": "greeting/0",
-                "nextStage": "greeting/1",
+                "currentStage": "/greeting/0",
+                "nextStage": "/greeting/1",
             }
         }
     except Exception as e:
@@ -81,7 +81,7 @@ async def handle_translate(request: Request) -> Dict[str, str]:
 async def handle_text_to_speech(request: Request, response_class=PlainTextResponse):
     try:
         data = await request.json()
-        text = data.get("text", "")
+        text = data.get("text", " ")
         voice = data.get("voice", "")
 
         if not text or not voice:

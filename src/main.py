@@ -1,8 +1,5 @@
 from typing import Union
 import time
-import asyncio
-
-import aioredis
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -22,9 +19,12 @@ app.include_router(api.router)
 
 
 @app.on_event("startup")
-async def startup_event():
-    print_project_initialization()
-    await initialize()
+async def initialize_server():
+    try:
+        print_project_initialization()
+        await initialize()
+    except Exception as e:
+        print("🔥 startup: [initialize_server] failed 🔥", e)
 
 
 @app.middleware("http")

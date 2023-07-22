@@ -1,3 +1,7 @@
+from src.utils.api import papago_translate, deepl_translate
+import json
+
+
 def print_project_initialization():
     art = """
      __   __   __     ______     ______   __  __     ______     __         
@@ -15,3 +19,34 @@ def print_project_initialization():
     ✨ Welcome to Virtual Picasso. "Everyting You Can Imagine Is Real" - Pablo Picasso                                             
     """
     print(art)
+
+
+class CustomError(Exception):
+    def __init__(self, message, code=None):
+        self.message = message
+        self.code = code
+        super().__init__(message)
+
+
+def throw_exception(message: str, code: int):
+    raise CustomError(message=message, code=code)
+
+
+async def server_translate(text: str, source_lang: str):
+    try:
+        res = await deepl_translate(text=text, source_lang=source_lang)
+        print("■■■■■■■■■[DEEPL TRANSLATION RESULT]■■■■■■■■■")
+        print(f"Before Translation: {text}")
+        print(f"After Translation: {res['translatedText']}")
+        return res["translatedText"]
+    except Exception as deepl_e:
+        try:
+            res = await papago_translate(text=text, source_lang=source_lang)
+            print("■■■■■■■■■[PAPAGO TRANSLATION RESULT]■■■■■■■■■")
+            print(f"Before Translation: {text}")
+            print(f"After Translation: {res['translatedText']}")
+            return res["translatedText"]
+        except Exception as papago_e:
+            print("🔥 utils/commmon: [server_translate] failed 🔥")
+            print("DeepL Error", deepl_e)
+            print("Papago Error", papago_e)
