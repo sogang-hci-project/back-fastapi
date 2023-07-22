@@ -1,0 +1,9 @@
+.venv
+
+cert.pem
+key.pem
+
+client
+.env
+
+*/__pycache__
