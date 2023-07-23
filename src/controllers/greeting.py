@@ -4,10 +4,9 @@ from typing import Dict
 from fastapi.responses import PlainTextResponse, StreamingResponse
 import io
 from pydantic import BaseModel
-from src.utils.api import papago_translate, deepl_translate, clova_text_to_speech
 from src.utils.common import server_translate
 from src.utils.redis import getArrayDialogue, appendDialogue
-from src.utils.openai.common import getPicassoAnswerFewShot
+from src.utils.openai.common import getPicassoAnswerFewShot, getGPTTranslation
 
 
 async def greeting_request_response(stage: int, user: str, lang: str, sessionID: str):
@@ -16,13 +15,14 @@ async def greeting_request_response(stage: int, user: str, lang: str, sessionID:
     nextStage = ""
 
     if lang == "ko":
-        user = await server_translate(user, source_lang=lang)
+        # user = await server_translate(text=user, source_lang=lang)
+        user = await getGPTTranslation(user, source_lang=lang, attempt_count=0)
 
     await appendDialogue(sessionID=sessionID, content=user, role="user")
 
     if stage == 1:
         try:
-            agent = "Welcome my friend, Can you tell me about yourname?"
+            agent = "Welcome. My name is Pablo Picasso, a spanish painter. Can you introduce yourself?"
             currentStage = "/greeting/1"
             nextStage = "/greeting/2"
         except Exception as e:
@@ -59,7 +59,8 @@ async def greeting_request_response(stage: int, user: str, lang: str, sessionID:
     await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
 
     if lang == "ko":
-        agent = await server_translate(agent, source_lang="en")
+        # agent = await server_translate(text=agent, source_lang="en")
+        agent = await getGPTTranslation(text=agent, source_lang="en", attempt_count=0)
 
     return {
         "data": {
