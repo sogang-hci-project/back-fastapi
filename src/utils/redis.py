@@ -12,7 +12,7 @@ class CustomError(Exception):
         super().__init__(message)
 
 
-async def initialize():
+async def check_redis():
     res = await redisEndPoint.ping()
     if res == False:
         throw_exception("Redis initialization failed", 500)
@@ -22,8 +22,8 @@ async def initialize():
 Dialogue Structure
 
 [
-    {"actor": actor, "message": message}
-    {"actor": actor, "message": message}
+    {"role": role, "content": content}
+    {"role": role, "content": content}
 ]
 
 """
@@ -39,7 +39,7 @@ async def getStringDialogue(
         dialogue = data["dialogue"] if "dialogue" in data else []
 
         stringDialogue = "\n".join(
-            list(map(lambda x: x["actor"] + ": " + x["message"], dialogue))
+            list(map(lambda x: x["role"] + ": " + x["content"], dialogue))
         )
 
         return stringDialogue or ""
@@ -50,17 +50,34 @@ async def getStringDialogue(
         )
 
 
-async def appendDialogue(
+async def getArrayDialogue(
     sessionID: str,
-    actor: str,
-    message: str,
 ):
     try:
         res = await redisEndPoint.get(f"sess:{sessionID}")
         data = json.loads(res)
 
         dialogue = data["dialogue"] if "dialogue" in data else []
-        dialogue.append({"actor": actor, "message": message})
+
+        return dialogue
+    except Exception as e:
+        print("🔥 utils/redis: [getStringDialogue] failed 🔥", e)
+        raise HTTPException(
+            status_code=500, detail="router/api: [getStringDialogue] failed"
+        )
+
+
+async def appendDialogue(
+    sessionID: str,
+    role: str,
+    content: str,
+):
+    try:
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+
+        dialogue = data["dialogue"] if "dialogue" in data else []
+        dialogue.append({"role": role, "content": content})
 
         data["dialogue"] = dialogue
         req = json.dumps(data)
@@ -80,14 +97,14 @@ async def getLastPicassoMessage(
         res = await redisEndPoint.get(f"sess:{sessionID}")
         data = json.loads(res)
         dialogue = data["dialogue"]
-        message = ""
+        content = ""
 
         for item in reversed(dialogue):
-            if item["actor"] == "Picasso":
-                message = item["message"]
+            if item["role"] == "Picasso":
+                content = item["content"]
                 break
 
-        return message
+        return content
     except Exception as e:
         print("🔥 utils/redis: [getLastPicassoMessage] failed 🔥", e)
         raise HTTPException(

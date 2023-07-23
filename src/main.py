@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.routers import client, api
 from src.utils.common import print_project_initialization
-from src.utils.redis import initialize
+from src.utils.redis import check_redis
+from src.utils.openai.initialize import register_openai_variable
 
 app = FastAPI()
 
@@ -22,7 +23,8 @@ app.include_router(api.router)
 async def initialize_server():
     try:
         print_project_initialization()
-        await initialize()
+        register_openai_variable()
+        await check_redis()
     except Exception as e:
         print("🔥 startup: [initialize_server] failed 🔥", e)
 

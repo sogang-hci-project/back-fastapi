@@ -9,6 +9,7 @@ import json
 
 from src.utils.api import papago_translate, deepl_translate, clova_text_to_speech
 from src.controllers.greeting import greeting_request_response
+from src.controllers.conversation import conversation_request_response
 from src.utils.redis import redisEndPoint
 
 
@@ -56,7 +57,24 @@ async def handle_greeting_request(
         )
         return response
     except Exception as e:
-        print("🔥 router/api: [greeting/1] failed 🔥", e)
+        print("🔥 router/api: [greeting] failed 🔥", e)
+        raise HTTPException(status_code=500, detail="router/api: [greeting/1] failed")
+
+
+@router.post("/api/v1/conversation/{stage}")
+async def handle_conversation_request(
+    stage: int,
+    req: ClientRequest,
+    sessionID: str,
+    lang: str,
+):
+    try:
+        response = await conversation_request_response(
+            stage, user=req.user, sessionID=sessionID, lang=lang
+        )
+        return response
+    except Exception as e:
+        print("🔥 router/api: [conversation] failed 🔥", e)
         raise HTTPException(status_code=500, detail="router/api: [greeting/1] failed")
 
 
