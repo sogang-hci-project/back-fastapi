@@ -8,8 +8,8 @@ from datetime import datetime
 import json
 
 from src.utils.api import papago_translate, deepl_translate, clova_text_to_speech
-from src.controllers.greeting import greeting_request_response
-from src.controllers.conversation import conversation_request_response
+from src.controllers.normal.greeting import greeting_request_response
+from src.controllers.normal.conversation import conversation_request_response
 from src.utils.redis import redisEndPoint
 
 
@@ -24,7 +24,7 @@ UTILITY ROUTING
 """
 
 
-@router.post("/api/v1/greeting/0", tags=["api"])
+@router.post("/api/v1/register", tags=["api"])
 async def handle_request_zero():
     try:
         id = str(uuid.uuid4())
@@ -35,38 +35,41 @@ async def handle_request_zero():
         return {
             "data": {
                 "sessionID": id,
-                "currentStage": "/greeting/0",
-                "nextStage": "/greeting/1",
             }
         }
     except Exception as e:
-        print("🔥 router/api: [greeting/0] failed 🔥", e)
+        print("🔥 router/api: [register] failed 🔥", e)
         raise HTTPException(status_code=500, detail="router/api: [greeting/0] failed")
 
 
-@router.post("/api/v1/greeting/{stage}")
+@router.post("/api/v1/{mode}/greeting/{stage}")
 async def handle_greeting_request(
     stage: int,
     req: ClientRequest,
     sessionID: str,
     lang: str,
+    mode: str,
 ):
     try:
-        response = await greeting_request_response(
-            stage, user=req.user, sessionID=sessionID, lang=lang
-        )
-        return response
+        if mode == "normal":
+            response = await greeting_request_response(
+                stage, user=req.user, sessionID=sessionID, lang=lang
+            )
+            return response
+        elif mode == "graph":
+            return {"": ""}
     except Exception as e:
         print("🔥 router/api: [greeting] failed 🔥", e)
         raise HTTPException(status_code=500, detail="router/api: [greeting/1] failed")
 
 
-@router.post("/api/v1/conversation/{stage}")
+@router.post("/api/v1/{mode}/conversation/{stage}")
 async def handle_conversation_request(
     stage: int,
     req: ClientRequest,
     sessionID: str,
     lang: str,
+    mode: str,
 ):
     try:
         response = await conversation_request_response(
@@ -118,4 +121,6 @@ async def handle_text_to_speech(request: Request, response_class=PlainTextRespon
         return StreamingResponse(io.BytesIO(decoded_audio), media_type="audio/mpeg")
     except Exception as e:
         print("🔥 router/api: [util/texttospeech] failed 🔥", e)
-        raise HTTPException(status_code=500, detail="Internal server error.")
+        raise HTTPException(
+            status_code=500, detail="router/api: [util/texttospeech] failed"
+        )
