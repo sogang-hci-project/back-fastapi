@@ -9,6 +9,7 @@ from src.routers import client, api
 from src.utils.common import print_project_initialization
 from src.utils.redis import check_redis
 from src.utils.openai.initialize import register_openai_variable
+from src.utils.llama_index.chroma import check_chroma_db
 
 app = FastAPI()
 
@@ -25,6 +26,7 @@ async def initialize_server():
         print_project_initialization()
         register_openai_variable()
         await check_redis()
+        check_chroma_db()
     except Exception as e:
         print("🔥 startup: [initialize_server] failed 🔥", e)
 

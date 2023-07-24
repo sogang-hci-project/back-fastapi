@@ -35,6 +35,8 @@ async def handle_request_zero():
         return {
             "data": {
                 "sessionID": id,
+                "currentStage": "/register",
+                "nextStage": "/greeting/0",
             }
         }
     except Exception as e:
@@ -72,10 +74,13 @@ async def handle_conversation_request(
     mode: str,
 ):
     try:
-        response = await conversation_request_response(
-            stage, user=req.user, sessionID=sessionID, lang=lang
-        )
-        return response
+        if mode == "normal":
+            response = await conversation_request_response(
+                stage, user=req.user, sessionID=sessionID, lang=lang
+            )
+            return response
+        elif mode == "graph":
+            return {"": ""}
     except Exception as e:
         print("🔥 router/api: [conversation] failed 🔥", e)
         raise HTTPException(status_code=500, detail="router/api: [greeting/1] failed")

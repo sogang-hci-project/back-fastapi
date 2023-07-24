@@ -20,16 +20,17 @@ async def conversation_request_response(
     if lang == "ko":
         user = await server_translate(user, source_lang=lang)
 
-    await appendDialogue(sessionID=sessionID, content=user, role="user")
-
     try:
         dialogue = await getArrayDialogue(sessionID=sessionID)
-        agent = await getPicassoAnswerFewShot(dialogue=dialogue, attempt_count=0)
+        agent = await getPicassoAnswerFewShot(
+            dialogue=dialogue, attempt_count=0, user_message=user
+        )
         currentStage = "/conversation/0"
         nextStage = "/conversation/0"
     except Exception as e:
         print("🔥 controller/conversation: [conversation] failed 🔥", e)
 
+    await appendDialogue(sessionID=sessionID, content=user, role="user")
     await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
 
     print("Final Agent Answer: ", agent)

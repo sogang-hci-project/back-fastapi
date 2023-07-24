@@ -63,7 +63,7 @@ async def getArrayDialogue(
     except Exception as e:
         print("🔥 utils/redis: [getStringDialogue] failed 🔥", e)
         raise HTTPException(
-            status_code=500, detail="router/api: [getStringDialogue] failed"
+            status_code=500, detail="utils/redis: [getStringDialogue] failed"
         )
 
 
@@ -86,7 +86,7 @@ async def appendDialogue(
     except Exception as e:
         print("🔥 utils/redis: [appendDialogue] failed 🔥", e)
         raise HTTPException(
-            status_code=500, detail="router/api: [appendDialogue] failed"
+            status_code=500, detail="utils/redis: [appendDialogue] failed"
         )
 
 
@@ -108,5 +108,5 @@ async def getLastPicassoMessage(
     except Exception as e:
         print("🔥 utils/redis: [getLastPicassoMessage] failed 🔥", e)
         raise HTTPException(
-            status_code=500, detail="router/api: [getLastPicassoMessage] failed"
+            status_code=500, detail="utils/redis: [getLastPicassoMessage] failed"
         )
