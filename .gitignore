@@ -5,5 +5,7 @@ key.pem
 
 client
 .env
+documents
+representations
 
 __pycache__/
