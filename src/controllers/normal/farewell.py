@@ -26,20 +26,19 @@ async def farewell_request_response(stage: int, user: str, lang: str, sessionID:
     if lang == "ko":
         await appendKoreanDialogue(sessionID=sessionID, content=user, role="user")
         user = await server_translate(user, source_lang=lang)
+    await appendDialogue(sessionID=sessionID, content=user, role="user")
 
     try:
         dialogue = await getArrayDialogue(sessionID=sessionID)
         agent = await getPicassoFarewell(
-            dialogue=dialogue, attempt_count=0, user_message=user
+            dialogue=dialogue[:-1], attempt_count=0, user_message=user
         )
         currentStage = "/farewell/0"
         nextStage = "/end"
     except Exception as e:
         print("🔥 controller/conversation: [conversation] failed 🔥", e)
 
-    await appendDialogue(sessionID=sessionID, content=user, role="user")
     await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
-
     print("Final Agent Answer: ", agent)
 
     if lang == "ko":

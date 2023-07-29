@@ -10,6 +10,7 @@ from src.utils.redis import (
     appendDialogue,
     getStringDialogue,
     appendKoreanDialogue,
+    isTimeSpanOver,
 )
 from src.utils.openai.common import getPicassoAnswerFewShot, getGPTTranslation
 
@@ -82,8 +83,7 @@ async def greeting_request_response(stage: int, user: str, lang: str, sessionID:
         try:
             agent = message_by_stage[stage][lang]
             currentStage = "/greeting/4"
-            # nextStage = "/conversation/0"
-            nextStage = "/farewell/0"
+            nextStage = "/conversation/0"
         except Exception as e:
             print("🔥 controller/greeting: [greeting/4] failed 🔥", e)
 

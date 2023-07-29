@@ -65,6 +65,12 @@ async def getStringDialogue(
         )
 
 
+def remove_key_from_objects(obj_array, key_to_remove):
+    for obj in obj_array:
+        if key_to_remove in obj:
+            del obj[key_to_remove]
+
+
 async def getArrayDialogue(
     sessionID: str,
 ):
@@ -74,11 +80,13 @@ async def getArrayDialogue(
 
         dialogue = data["dialogue"] if "dialogue" in data else []
 
+        remove_key_from_objects(dialogue, "time")
+
         return dialogue
     except Exception as e:
-        print("🔥 utils/redis: [getStringDialogue] failed 🔥", e)
+        print("🔥 utils/redis: [getArrayDialogue] failed 🔥", e)
         raise HTTPException(
-            status_code=500, detail="utils/redis: [getStringDialogue] failed"
+            status_code=500, detail="utils/redis: [getArrayDialogue] failed"
         )
 
 
@@ -91,8 +99,9 @@ async def appendDialogue(
         res = await redisEndPoint.get(f"sess:{sessionID}")
         data = json.loads(res)
 
+        conversation_time = datetime.now().timestamp()
         dialogue = data["dialogue"] if "dialogue" in data else []
-        dialogue.append({"role": role, "content": content})
+        dialogue.append({"time": conversation_time, "role": role, "content": content})
 
         data["dialogue"] = dialogue
         req = json.dumps(data)
@@ -115,7 +124,8 @@ async def appendKoreanDialogue(
         data = json.loads(res)
 
         dialogue = data["dialogue_korean"] if "dialogue_korean" in data else []
-        dialogue.append({"role": role, "content": content})
+        conversation_time = datetime.now().timestamp()
+        dialogue.append({"time": conversation_time, "role": role, "content": content})
 
         data["dialogue_korean"] = dialogue
         req = json.dumps(data)
@@ -154,12 +164,16 @@ async def isTimeSpanOver(sessionId: str):
     try:
         res = await redisEndPoint.get(f"sess:{sessionId}")
         data = json.loads(res)
+
         init_timestamp = int(data["init-timestamp"])
         current_timestamp = datetime.now().timestamp()
         span = current_timestamp - init_timestamp
-        print(span)
-        # return span > 600
-        return False
+
+        if span > 600:
+            print("CONVERSATION ABORTED DUE TO TIME LIMIT, BYE")
+            return True
+        else:
+            return False
 
     except Exception as e:
         print("🔥 utils/redis: [isTimeSpanOver] failed 🔥", e)

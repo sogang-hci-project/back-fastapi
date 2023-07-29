@@ -27,9 +27,14 @@ async def conversation_request_response(
     currentStage = ""
     nextStage = ""
 
-    if lang == "ko":
-        await appendKoreanDialogue(sessionID=sessionID, content=user, role="user")
-        user = await server_translate(user, source_lang=lang)
+    try:
+        if lang == "ko":
+            await appendKoreanDialogue(sessionID=sessionID, content=user, role="user")
+            user = await server_translate(user, source_lang=lang)
+
+        await appendDialogue(sessionID=sessionID, content=user, role="user")
+    except Exception as e:
+        print("🔥 controller/conversation: [conversation/0][pre-translate] failed 🔥", e)
 
     try:
         ### ChatGPT3.5 Case ###
@@ -37,7 +42,7 @@ async def conversation_request_response(
         isOver = await isTimeSpanOver(sessionID=sessionID)
 
         agent = await getPicassoAnswerFewShot(
-            dialogue=dialogue, attempt_count=0, user_message=user
+            dialogue=dialogue[:-1], attempt_count=0, user_message=user
         )
         # string_dialogue = await getStringDialogue(sessionID=sessionID)
         # previous_agent = await getLastPicassoMessage(sessionID=sessionID)
@@ -56,14 +61,19 @@ async def conversation_request_response(
     except Exception as e:
         print("🔥 controller/conversation: [conversation] failed 🔥", e)
 
-    await appendDialogue(sessionID=sessionID, content=user, role="user")
-    await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
+    try:
+        await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
+
+        if lang == "ko":
+            agent = await server_translate(agent, source_lang="en")
+            await appendKoreanDialogue(
+                sessionID=sessionID, content=agent, role="assistant"
+            )
+
+    except Exception as e:
+        print("🔥 controller/conversation: [conversation/0][post-translate] failed 🔥", e)
 
     print("Final Agent Answer: ", agent)
-
-    if lang == "ko":
-        agent = await server_translate(agent, source_lang="en")
-        await appendKoreanDialogue(sessionID=sessionID, content=agent, role="assistant")
 
     return {
         "data": {
