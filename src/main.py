@@ -10,6 +10,7 @@ from src.utils.common import print_project_initialization
 from src.utils.redis import check_redis
 from src.utils.openai.initialize import register_openai_variable
 from src.utils.llama_index.chroma import check_chroma_db
+from src.utils.llama_index.common import retrieve_relevent_nodes_in_string
 
 app = FastAPI()
 

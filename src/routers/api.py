@@ -10,6 +10,7 @@ import json
 from src.utils.api import papago_translate, deepl_translate, clova_text_to_speech
 from src.controllers.normal.greeting import greeting_request_response
 from src.controllers.normal.conversation import conversation_request_response
+from src.controllers.normal.farewell import farewell_request_response
 from src.utils.redis import redisEndPoint
 
 
@@ -29,19 +30,24 @@ async def handle_request_zero():
     try:
         id = str(uuid.uuid4())
         current = datetime.now().strftime("%m-%d %H:%M:%S")
-        data = {"init": current}
-        await redisEndPoint.set(f"sess:{id}", value=json.dumps(data))
+        id_current = id + "-" + datetime.now().strftime("%m-%d-%H-%M")
+        current_timestamp = datetime.now().timestamp()
+        data = {
+            "init": current,
+            "init-timestamp": current_timestamp,
+        }
+        await redisEndPoint.set(f"sess:{id_current}", value=json.dumps(data))
 
         return {
             "data": {
-                "sessionID": id,
+                "sessionID": id_current,
                 "currentStage": "/register",
                 "nextStage": "/greeting/0",
             }
         }
     except Exception as e:
         print("🔥 router/api: [register] failed 🔥", e)
-        raise HTTPException(status_code=500, detail="router/api: [greeting/0] failed")
+        raise HTTPException(status_code=500, detail="router/api: [register] failed")
 
 
 @router.post("/api/v1/{mode}/greeting/{stage}")
@@ -62,7 +68,7 @@ async def handle_greeting_request(
             return {"": ""}
     except Exception as e:
         print("🔥 router/api: [greeting] failed 🔥", e)
-        raise HTTPException(status_code=500, detail="router/api: [greeting/1] failed")
+        raise HTTPException(status_code=500, detail="router/api: [greeting] failed")
 
 
 @router.post("/api/v1/{mode}/conversation/{stage}")
@@ -83,7 +89,28 @@ async def handle_conversation_request(
             return {"": ""}
     except Exception as e:
         print("🔥 router/api: [conversation] failed 🔥", e)
-        raise HTTPException(status_code=500, detail="router/api: [greeting/1] failed")
+        raise HTTPException(status_code=500, detail="router/api: [conversation] failed")
+
+
+@router.post("/api/v1/{mode}/farewell/{stage}")
+async def handle_farewell_request(
+    stage: int,
+    req: ClientRequest,
+    sessionID: str,
+    lang: str,
+    mode: str,
+):
+    try:
+        if mode == "normal":
+            response = await farewell_request_response(
+                stage, user=req.user, sessionID=sessionID, lang=lang
+            )
+            return response
+        elif mode == "graph":
+            return {"": ""}
+    except Exception as e:
+        print("🔥 router/api: [farewell] failed 🔥", e)
+        raise HTTPException(status_code=500, detail="router/api: [farewell] failed")
 
 
 """

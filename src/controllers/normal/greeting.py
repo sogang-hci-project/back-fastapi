@@ -5,13 +5,18 @@ from fastapi.responses import PlainTextResponse, StreamingResponse
 import io
 from pydantic import BaseModel
 from src.utils.common import server_translate
-from src.utils.redis import getArrayDialogue, appendDialogue
+from src.utils.redis import (
+    getArrayDialogue,
+    appendDialogue,
+    getStringDialogue,
+    appendKoreanDialogue,
+)
 from src.utils.openai.common import getPicassoAnswerFewShot, getGPTTranslation
 
 message_by_stage = [
     {
         "en": "Welcome. My name is Pablo Picasso, a spanish painter. Can you introduce yourself?",
-        "ko": "환영합니다, 저는 파블로 파카소라고 하는 스페인의 화가입니다. 당신에 대해 소개해줄 수 있나요?",
+        "ko": "환영합니다, 저는 파블로 피카소라고 하는 스페인의 화가입니다. 당신에 대해 소개해줄 수 있나요?",
     },
     {
         "en": "Indeed. Its such wonderful to meet you here. What brings you here?",
@@ -37,11 +42,13 @@ async def greeting_request_response(stage: int, user: str, lang: str, sessionID:
     currentStage = ""
     nextStage = ""
 
-    if lang == "ko":
-        # user = await server_translate(text=user, source_lang=lang)
-        user = await getGPTTranslation(user, source_lang=lang, attempt_count=0)
-
-    await appendDialogue(sessionID=sessionID, content=user, role="user")
+    try:
+        if lang == "ko":
+            await appendKoreanDialogue(sessionID=sessionID, content=user, role="user")
+            user = await getGPTTranslation(user, source_lang=lang, attempt_count=0)
+        await appendDialogue(sessionID=sessionID, content=user, role="user")
+    except Exception as e:
+        print("🔥 controller/greeting: [greeting/0][pre-translate] failed 🔥", e)
 
     if stage == 0:
         try:
@@ -75,17 +82,24 @@ async def greeting_request_response(stage: int, user: str, lang: str, sessionID:
         try:
             agent = message_by_stage[stage][lang]
             currentStage = "/greeting/4"
-            nextStage = "/conversation/0"
+            # nextStage = "/conversation/0"
+            nextStage = "/farewell/0"
         except Exception as e:
             print("🔥 controller/greeting: [greeting/4] failed 🔥", e)
 
-    await appendDialogue(
-        sessionID=sessionID, content=message_by_stage[stage]["en"], role="assistant"
-    )
-
-    # if lang == "ko":
-    # agent = await server_translate(text=agent, source_lang="en")
-    # agent = await getGPTTranslation(text=agent, source_lang="en", attempt_count=0)
+    try:
+        await appendDialogue(
+            sessionID=sessionID, content=message_by_stage[stage]["en"], role="assistant"
+        )
+        if lang == "ko":
+            user = await getGPTTranslation(user, source_lang=lang, attempt_count=0)
+            await appendKoreanDialogue(
+                sessionID=sessionID,
+                content=message_by_stage[stage]["ko"],
+                role="assistant",
+            )
+    except Exception as e:
+        print("🔥 controller/greeting: [greeting/0][post-translate] failed 🔥", e)
 
     return {
         "data": {

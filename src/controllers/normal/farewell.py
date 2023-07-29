@@ -12,17 +12,13 @@ from src.utils.redis import (
     appendKoreanDialogue,
     getStringDialogue,
     getLastPicassoMessage,
-    isTimeSpanOver,
 )
 from src.utils.openai.common import (
-    getPicassoAnswerFewShot,
-    getPicassoAnswerFewShotTextDavinci,
+    getPicassoFarewell,
 )
 
 
-async def conversation_request_response(
-    stage: int, user: str, lang: str, sessionID: str
-):
+async def farewell_request_response(stage: int, user: str, lang: str, sessionID: str):
     agent = ""
     currentStage = ""
     nextStage = ""
@@ -32,27 +28,12 @@ async def conversation_request_response(
         user = await server_translate(user, source_lang=lang)
 
     try:
-        ### ChatGPT3.5 Case ###
         dialogue = await getArrayDialogue(sessionID=sessionID)
-        isOver = await isTimeSpanOver(sessionID=sessionID)
-
-        agent = await getPicassoAnswerFewShot(
+        agent = await getPicassoFarewell(
             dialogue=dialogue, attempt_count=0, user_message=user
         )
-        # string_dialogue = await getStringDialogue(sessionID=sessionID)
-        # previous_agent = await getLastPicassoMessage(sessionID=sessionID)
-        # agent = await getPicassoAnswerFewShotTextDavinci(
-        #     string_dialogue=string_dialogue,
-        #     user_message=user,
-        #     agent_message=previous_agent,
-        #     attempt_count=0,
-        # )
-        currentStage = "/conversation/0"
-
-        if isOver:
-            nextStage = "/farewell/0"
-        else:
-            nextStage = "/conversation/0"
+        currentStage = "/farewell/0"
+        nextStage = "/end"
     except Exception as e:
         print("🔥 controller/conversation: [conversation] failed 🔥", e)
 

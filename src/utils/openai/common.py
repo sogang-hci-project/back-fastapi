@@ -2,18 +2,6 @@ import openai
 import asyncio
 from src.utils.llama_index.common import retrieve_relevent_nodes_in_string
 
-base_instruction = f"""
-    [TASK]
-    You are now Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica." As your student, The user is eager to learn more about this iconic painting. Please guide user through its significance and history while keeping the dialogue engaging by asking pedagogical questions to keep the conversation going.
-    As Picasso, you can begin by providing some background information on the painting and its creation. Feel free to elaborate on the context and emotions that influenced your artistic choices. Additionally, you can highlight the symbolism and deeper meaning behind the various elements in the painting.
-    To ensure an interactive and educational conversation, don't forget to engage the user with pedagogical questions that encourage critical thinking and further exploration of the artwork. You can ask user about user interpretation of certain elements or encourage user to consider the historical events that inspired "Guernica."
-    
-    [RULE]
-    - Do not exceed more than two sentence.
-    - Ask a question at the end of the conversation.
-    - Reply as Pablo Picasso.
-"""
-
 
 async def getOpenAIChatCompletion(model: str, message: str):
     completion = await openai.ChatCompletion.acreate(
@@ -26,6 +14,82 @@ async def getOpenAIChatCompletion(model: str, message: str):
     print(completion["choices"][0]["message"]["content"])
 
 
+async def getPicassoAnswerFewShotTextDavinci(
+    string_dialogue: str, user_message: str, agent_message: str, attempt_count: int
+):
+    try:
+        query_base = (
+            "Art edcuation on the the painting Guernica by Pablo Picasso"
+            + agent_message
+            + user_message
+        )
+        nodes = await retrieve_relevent_nodes_in_string(query_base)
+
+        new_instruction = f"""
+            [TASK]
+            You are now Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica." As your student, The user is eager to learn more about this iconic painting. Please guide user through its significance and history while keeping the string_dialogue engaging by asking pedagogical questions to keep the conversation going.
+            As Picasso, you can begin by providing some background information on the painting and its creation. Feel free to elaborate on the context and emotions that influenced your artistic choices. Additionally, you can highlight the symbolism and deeper meaning behind the various elements in the painting.
+            To ensure an interactive and educational conversation, don't forget to engage the user with pedagogical questions that encourage critical thinking and further exploration of the artwork. You can ask user about user interpretation of certain elements or encourage user to consider the historical events that inspired "Guernica."
+            Reference on following [DATA] for informations and adhere to dialogue context provided in [CONTEXT]. 
+            
+            [DATA]
+            {nodes}
+            
+            [CONTEXT]
+            {string_dialogue}
+            
+            [RULE]
+            - Do not exceed more than two sentence.
+            - Ask a question at the end of the conversation.
+            - Reply as Pablo Picasso.
+            
+            [MESSAGE]
+            {user_message}
+            
+            [GOAL]
+            Follow the [TASK] and generate a reply for student message
+            
+            [REPLY]
+            Picasso: 
+        """
+
+        print(
+            f"""
+---------------------------------------------
+---------------------------------------------
+A Referenced Nodes
+{nodes}
+---------------------------------------------
+---------------------------------------------
+            """
+        )
+
+        completion = await openai.Completion.acreate(
+            model="text-davinci-003",
+            prompt=new_instruction,
+            max_tokens=100,
+        )
+
+        return completion["choices"][0]["text"]
+    except Exception as e:
+        print(
+            f"🔥 utils/openai/common: [getPicassoAnswerFewShotTextDavinci] failed {attempt_count + 1} times🔥",
+            e,
+        )
+        if attempt_count + 1 == 3:
+            print(
+                "🔥 utils/openai/common: [getPicassoAnswerFewShotTextDavinci] max error reached🔥"
+            )
+            return "I'm sorry can you tell me once more?"
+        await asyncio.sleep(1)
+        return await getPicassoAnswerFewShotTextDavinci(
+            string_dialogue=string_dialogue,
+            attempt_count=attempt_count + 1,
+            user_message=user_message,
+            agent_message=agent_message,
+        )
+
+
 async def getPicassoAnswerFewShot(
     dialogue: list, user_message: str, attempt_count: int
 ):
@@ -35,6 +99,18 @@ async def getPicassoAnswerFewShot(
             "While looking at the painting Guernica by Pablo Picasso, " + user_message
         )
         nodes = await retrieve_relevent_nodes_in_string(query_base)
+
+        base_instruction = f"""
+            [TASK]
+            You are now Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica." As your student, The user is eager to learn more about this iconic painting. Please guide user through its significance and history while keeping the dialogue engaging by asking pedagogical questions to keep the conversation going.
+            As Picasso, you can begin by providing some background information on the painting and its creation. Feel free to elaborate on the context and emotions that influenced your artistic choices. Additionally, you can highlight the symbolism and deeper meaning behind the various elements in the painting.
+            To ensure an interactive and educational conversation, don't forget to engage the user with pedagogical questions that encourage critical thinking and further exploration of the artwork. You can ask user about user interpretation of certain elements or encourage user to consider the historical events that inspired "Guernica."
+
+            [RULE]
+            - Do not exceed more than two sentence.
+            - Ask a question at the end of the conversation.
+            - Reply as Pablo Picasso.
+        """
 
         new_instruction = f"""
             [TASK]
@@ -54,12 +130,12 @@ async def getPicassoAnswerFewShot(
 
         print(
             f"""
-            ---------------------------------------------
-            ---------------------------------------------
-            A Referenced Node Contents
-            {nodes}
-            ---------------------------------------------
-            ---------------------------------------------
+---------------------------------------------
+---------------------------------------------
+A Referenced Nodes
+{nodes}
+---------------------------------------------
+---------------------------------------------
             """
         )
 
@@ -71,8 +147,8 @@ async def getPicassoAnswerFewShot(
         )
 
         completion = await openai.ChatCompletion.acreate(
-            # model="gpt-4",
-            model="gpt-3.5-turbo",
+            model="gpt-4",
+            # model="gpt-3.5-turbo",
             messages=messages,
         )
 
@@ -87,6 +163,46 @@ async def getPicassoAnswerFewShot(
             return "I'm sorry can you tell me once more?"
         await asyncio.sleep(1)
         return await getPicassoAnswerFewShot(
+            dialogue=dialogue,
+            attempt_count=attempt_count + 1,
+            user_message=user_message,
+        )
+
+
+async def getPicassoFarewell(dialogue: list, user_message: str, attempt_count: int):
+    try:
+        base_instruction = f"""
+            [TASK]
+            You are now Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica." As your student, the user is eager to learn more about this iconic painting.
+            As Picasso, indicate that you enjoyed conversation and now you need finish the conversation.
+            Be sure to be encouraging and friendly using the information in previous conversation. End with farewell.
+            
+            [RULE]
+            - Do not exceed more than two sentence.
+            - Reply as Pablo Picasso.
+            
+            [GOAL]
+            Follow the task and generate the reply.
+        """
+
+        messages = dialogue + [{"role": "system", "content": base_instruction}]
+
+        completion = await openai.ChatCompletion.acreate(
+            model="gpt-3.5-turbo",
+            messages=messages,
+        )
+
+        return completion["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(
+            f"🔥 utils/openai/common: [getPicassoFarewell] failed {attempt_count + 1} times🔥",
+            e,
+        )
+        if attempt_count + 1 == 3:
+            print("🔥 utils/openai/common: [getPicassoFarewell] max error reached🔥")
+            return "I'm sorry can you tell me once more?"
+        await asyncio.sleep(1)
+        return await getPicassoFarewell(
             dialogue=dialogue,
             attempt_count=attempt_count + 1,
             user_message=user_message,
