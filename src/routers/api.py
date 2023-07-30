@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, UploadFile
 import uuid
 from typing import Dict
 from fastapi.responses import PlainTextResponse, StreamingResponse
@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from datetime import datetime
 import json
 
+from src.utils.openai.common import whisper_speech_to_text
 from src.utils.api import papago_translate, deepl_translate, clova_text_to_speech
 from src.controllers.normal.greeting import greeting_request_response
 from src.controllers.normal.conversation import conversation_request_response
@@ -155,4 +156,18 @@ async def handle_text_to_speech(request: Request, response_class=PlainTextRespon
         print("🔥 router/api: [util/texttospeech] failed 🔥", e)
         raise HTTPException(
             status_code=500, detail="router/api: [util/texttospeech] failed"
+        )
+
+
+@router.post("/api/v1/util/speechtotext", tags=["api"])
+async def handle_speech_to_text(file: UploadFile):
+    try:
+        print("received file in router: ", file)
+        result = await whisper_speech_to_text(file.file)
+        print("paraphrase result: ", result)
+        return {"result", result}
+    except Exception as e:
+        print("🔥 router/api: [util/speechtotext] failed 🔥", e)
+        raise HTTPException(
+            status_code=500, detail="router/api: [util/speechtotext] failed"
         )

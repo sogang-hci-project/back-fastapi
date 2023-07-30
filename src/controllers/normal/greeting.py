@@ -12,7 +12,7 @@ from src.utils.redis import (
     appendKoreanDialogue,
     isTimeSpanOver,
 )
-from src.utils.openai.common import getPicassoAnswerFewShot, getGPTTranslation
+from src.utils.openai.common import getPicassoAnswerFewShot, get_GPT_translation
 
 message_by_stage = [
     {
@@ -46,7 +46,7 @@ async def greeting_request_response(stage: int, user: str, lang: str, sessionID:
     try:
         if lang == "ko":
             await appendKoreanDialogue(sessionID=sessionID, content=user, role="user")
-            user = await getGPTTranslation(user, source_lang=lang, attempt_count=0)
+            user = await get_GPT_translation(user, source_lang=lang, attempt_count=0)
         await appendDialogue(sessionID=sessionID, content=user, role="user")
     except Exception as e:
         print("🔥 controller/greeting: [greeting/0][pre-translate] failed 🔥", e)
@@ -92,7 +92,7 @@ async def greeting_request_response(stage: int, user: str, lang: str, sessionID:
             sessionID=sessionID, content=message_by_stage[stage]["en"], role="assistant"
         )
         if lang == "ko":
-            user = await getGPTTranslation(user, source_lang=lang, attempt_count=0)
+            user = await get_GPT_translation(user, source_lang=lang, attempt_count=0)
             await appendKoreanDialogue(
                 sessionID=sessionID,
                 content=message_by_stage[stage]["ko"],

@@ -1,6 +1,10 @@
 import openai
 import asyncio
 from src.utils.llama_index.common import retrieve_relevent_nodes_in_string
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 
 async def getOpenAIChatCompletion(model: str, message: str):
@@ -158,7 +162,7 @@ A Referenced Nodes
             e,
         )
         if attempt_count + 1 == 3:
-            print("🔥 utils/openai/common: [getGPTTranslation] max error reached🔥")
+            print("🔥 utils/openai/common: [get_GPT_translation] max error reached🔥")
             return "I'm sorry can you tell me once more?"
         await asyncio.sleep(1)
         return await getPicassoAnswerFewShot(
@@ -208,7 +212,7 @@ async def getPicassoFarewell(dialogue: list, user_message: str, attempt_count: i
         )
 
 
-async def getGPTTranslation(text: str, source_lang: str, attempt_count: int):
+async def get_GPT_translation(text: str, source_lang: str, attempt_count: int):
     try:
         lang_dict = {"ko": "korean", "en": "english"}
         source = lang_dict[source_lang]
@@ -276,8 +280,6 @@ async def getGPTTranslation(text: str, source_lang: str, attempt_count: int):
         completion = await openai.ChatCompletion.acreate(
             model="gpt-3.5-turbo", messages=messages, temperature=0
         )
-        print(completion)
-
         translated = completion["choices"][0]["message"]["content"]
 
         print("■■■■■■■■■[OPENAI TRANSLATION RESULT]■■■■■■■■■")
@@ -288,13 +290,59 @@ async def getGPTTranslation(text: str, source_lang: str, attempt_count: int):
 
     except Exception as e:
         print(
-            f"🔥 utils/openai/common: [getGPTTranslation] failed {attempt_count + 1} times🔥",
+            f"🔥 utils/openai/common: [get_GPT_translation] failed {attempt_count + 1} times🔥",
             e,
         )
         if attempt_count + 1 == 3:
-            print("🔥 utils/openai/common: [getGPTTranslation] max error reached🔥")
+            print("🔥 utils/openai/common: [get_GPT_translation] max error reached🔥")
             return ""
         await asyncio.sleep(1)
-        return await getGPTTranslation(
+        return await get_GPT_translation(
             text=text, source_lang=source_lang, attempt_count=attempt_count + 1
         )
+
+
+# async def whisper_speech_to_text(audio_file):
+#     try:
+#         print("received_file:", audio_file, type(audio_file))
+#         print("received_file_file:", audio_file.file, type(audio_file.file))
+#         audio_file.name = "audio.mp3"
+#         data = await audio_file.read()
+#         data.name = "audio.mp3"
+
+#         res = await openai.Audio.transcribe("whisper-1", data)
+#         print("whisper_result:", res)
+#         return res
+#     except Exception as e:
+#         print("🔥 utils/openai/common: [whisper_speech_to_text] failed 🔥", e)
+
+import requests
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+
+async def whisper_speech_to_text(file):
+    try:
+        url = "https://api.openai.com/v1/audio/transcriptions"
+        headers = {
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+        }
+        data = {
+            "model": "whisper-1",
+            "prompt": "이것은 파블로 피카소와 그림 게르니카에 대한 대화입니다. 스페인 내전 과정에서 나타난 참혹함과 그것을 표현한 게르니카에 대해 다루고 있습니다.",
+        }
+        files = {
+            "file": ("audio.mp3", file),
+        }
+
+        response = requests.post(url, headers=headers, data=data, files=files)
+
+        if response.status_code == 200:
+            result = response.json()
+            transcription = result.get("text", "")
+            return transcription
+        else:
+            print(f"Request failed with status code: {response.status_code}")
+            return None
+    except Exception as e:
+        print("🔥 utils/openai/common: [whisper_speech_to_text] failed 🔥", e)
