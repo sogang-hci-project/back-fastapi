@@ -160,9 +160,9 @@ async def getLastPicassoMessage(
         )
 
 
-async def isTimeSpanOver(sessionId: str):
+async def isTimeSpanOver(sessionID: str):
     try:
-        res = await redisEndPoint.get(f"sess:{sessionId}")
+        res = await redisEndPoint.get(f"sess:{sessionID}")
         data = json.loads(res)
 
         init_timestamp = int(data["init-timestamp"])

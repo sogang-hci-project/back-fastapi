@@ -94,7 +94,6 @@ async def getPicassoAnswerFewShot(
     dialogue: list, user_message: str, attempt_count: int
 ):
     try:
-        messages = [{"role": "system", "content": base_instruction}] + dialogue
         query_base = (
             "While looking at the painting Guernica by Pablo Picasso, " + user_message
         )
