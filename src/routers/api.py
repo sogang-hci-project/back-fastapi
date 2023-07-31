@@ -162,10 +162,9 @@ async def handle_text_to_speech(request: Request, response_class=PlainTextRespon
 @router.post("/api/v1/util/speechtotext", tags=["api"])
 async def handle_speech_to_text(file: UploadFile):
     try:
-        print("received file in router: ", file)
-        result = await whisper_speech_to_text(file.file)
-        print("paraphrase result: ", result)
-        return {"result", result}
+        result = await whisper_speech_to_text(file=file.file, count=0)
+        print("[SERVICE UTIL] Whisper Paraphrase: ", result)
+        return {"text", result}
     except Exception as e:
         print("🔥 router/api: [util/speechtotext] failed 🔥", e)
         raise HTTPException(

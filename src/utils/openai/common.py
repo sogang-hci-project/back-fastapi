@@ -1,10 +1,12 @@
 import openai
 import asyncio
+import requests
 from src.utils.llama_index.common import retrieve_relevent_nodes_in_string
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 
 async def getOpenAIChatCompletion(model: str, message: str):
@@ -302,26 +304,15 @@ async def get_GPT_translation(text: str, source_lang: str, attempt_count: int):
         )
 
 
-# async def whisper_speech_to_text(audio_file):
-#     try:
-#         print("received_file:", audio_file, type(audio_file))
-#         print("received_file_file:", audio_file.file, type(audio_file.file))
-#         audio_file.name = "audio.mp3"
-#         data = await audio_file.read()
-#         data.name = "audio.mp3"
-
-#         res = await openai.Audio.transcribe("whisper-1", data)
-#         print("whisper_result:", res)
-#         return res
-#     except Exception as e:
-#         print("🔥 utils/openai/common: [whisper_speech_to_text] failed 🔥", e)
-
-import requests
-
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+"""
+Request based function due to openai api integrity check
+"""
 
 
-async def whisper_speech_to_text(file):
+async def whisper_speech_to_text(file, count: int):
+    fallback_message = "I'm sorry can you repeat again?"
+    request_timeout = 5
+
     try:
         url = "https://api.openai.com/v1/audio/transcriptions"
         headers = {
@@ -335,14 +326,33 @@ async def whisper_speech_to_text(file):
             "file": ("audio.mp3", file),
         }
 
-        response = requests.post(url, headers=headers, data=data, files=files)
+        response = requests.post(
+            url, headers=headers, data=data, files=files, timeout=request_timeout
+        )
 
         if response.status_code == 200:
             result = response.json()
             transcription = result.get("text", "")
             return transcription
         else:
-            print(f"Request failed with status code: {response.status_code}")
-            return None
+            print(
+                f"🔥 utils/openai/common: [whisper_speech_to_text] failed. Returning fallback message 🔥: {response.status_code}"
+            )
+            return fallback_message
+    except requests.Timeout:
+        if count < 3:
+            print(
+                f"🔥 utils/openai/common: [whisper_speech_to_text] Timeout 🔥, Trying {count + 1} time"
+            )
+            return await whisper_speech_to_text(file=file, count=count + 1)
+        else:
+            print(
+                "🔥 utils/openai/common: [whisper_speech_to_text] failed. Returning fallback message 🔥"
+            )
+            return fallback_message
     except Exception as e:
-        print("🔥 utils/openai/common: [whisper_speech_to_text] failed 🔥", e)
+        print(
+            "🔥 utils/openai/common: [whisper_speech_to_text] failed. Returning fallback message 🔥",
+            e,
+        )
+        return fallback_message
