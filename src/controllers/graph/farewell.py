@@ -18,7 +18,9 @@ from src.utils.openai.common import (
 )
 
 
-async def farewell_request_response(stage: int, user: str, lang: str, sessionID: str):
+async def farewell_request_graph_response(
+    stage: int, user: str, lang: str, sessionID: str
+):
     agent = ""
     currentStage = ""
     nextStage = ""

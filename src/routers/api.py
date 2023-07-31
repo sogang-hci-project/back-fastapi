@@ -12,6 +12,10 @@ from src.utils.api import papago_translate, deepl_translate, clova_text_to_speec
 from src.controllers.normal.greeting import greeting_request_response
 from src.controllers.normal.conversation import conversation_request_response
 from src.controllers.normal.farewell import farewell_request_response
+from src.controllers.graph.greeting import greeting_request_graph_response
+from src.controllers.graph.conversation import conversation_request_graph_response
+from src.controllers.graph.farewell import farewell_request_graph_response
+
 from src.utils.redis import redisEndPoint
 
 
@@ -66,7 +70,10 @@ async def handle_greeting_request(
             )
             return response
         elif mode == "graph":
-            return {"": ""}
+            response = await greeting_request_graph_response(
+                stage, user=req.user, sessionID=sessionID, lang=lang
+            )
+            return response
     except Exception as e:
         print("🔥 router/api: [greeting] failed 🔥", e)
         raise HTTPException(status_code=500, detail="router/api: [greeting] failed")
@@ -87,7 +94,10 @@ async def handle_conversation_request(
             )
             return response
         elif mode == "graph":
-            return {"": ""}
+            response = await conversation_request_graph_response(
+                stage, user=req.user, sessionID=sessionID, lang=lang
+            )
+            return response
     except Exception as e:
         print("🔥 router/api: [conversation] failed 🔥", e)
         raise HTTPException(status_code=500, detail="router/api: [conversation] failed")
@@ -108,7 +118,10 @@ async def handle_farewell_request(
             )
             return response
         elif mode == "graph":
-            return {"": ""}
+            response = await farewell_request_graph_response(
+                stage, user=req.user, sessionID=sessionID, lang=lang
+            )
+            return response
     except Exception as e:
         print("🔥 router/api: [farewell] failed 🔥", e)
         raise HTTPException(status_code=500, detail="router/api: [farewell] failed")

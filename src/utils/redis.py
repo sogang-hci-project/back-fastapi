@@ -65,6 +65,45 @@ async def getStringDialogue(
         )
 
 
+def joinMessageAsSentenceForSupervisor(message: dict[str, str]):
+    try:
+        role = ""
+        if message["role"] == "assistant":
+            role = "Art Educator"
+        elif message["role"] == "user":
+            role = "Student"
+        return role + ": " + message["content"]
+
+    except Exception as e:
+        print("🔥 utils/redis: [joinMessageAsSentenceForSupervisor] failed 🔥", e)
+        raise HTTPException(
+            status_code=500,
+            detail="router/api: [joinMessageAsSentenceForSupervisor] failed",
+        )
+
+
+async def getStringDialogueForSupervisor(
+    sessionID: str,
+):
+    try:
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+
+        dialogue = data["dialogue"] if "dialogue" in data else []
+
+        stringDialogue = "\n".join(
+            list(map(joinMessageAsSentenceForSupervisor, dialogue))
+        )
+
+        return stringDialogue or ""
+    except Exception as e:
+        print("🔥 utils/redis: [getStringDialogueForSupervisor] failed 🔥", e)
+        raise HTTPException(
+            status_code=500,
+            detail="router/api: [getStringDialogueForSupervisor] failed",
+        )
+
+
 def remove_key_from_objects(obj_array, key_to_remove):
     for obj in obj_array:
         if key_to_remove in obj:
@@ -168,6 +207,12 @@ async def isTimeSpanOver(sessionID: str):
         init_timestamp = int(data["init-timestamp"])
         current_timestamp = datetime.now().timestamp()
         span = current_timestamp - init_timestamp
+        print(
+            f"""
+            ■■■■■■■■■[TIME SPAN CALCULATION]■■■■■■■■■
+            {span} seconds has been passed
+            """
+        )
 
         if span > 600:
             print("CONVERSATION ABORTED DUE TO TIME LIMIT, BYE")

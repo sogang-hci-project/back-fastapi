@@ -152,8 +152,8 @@ A Referenced Nodes
         )
 
         completion = await openai.ChatCompletion.acreate(
-            model="gpt-4",
-            # model="gpt-3.5-turbo",
+            # model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=messages,
         )
 
