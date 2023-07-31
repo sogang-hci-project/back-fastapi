@@ -56,6 +56,7 @@ async def deepl_translate(text: str, source_lang: str) -> Dict[str, str]:
 
         response = requests.post(url, data=data, headers=headers)
         response_data = response.json()
+
         translated_text = response_data.get("translations", [])[0].get("text", None)
 
         return {"translatedText": translated_text}

@@ -333,12 +333,12 @@ async def whisper_speech_to_text(file, count: int):
         if response.status_code == 200:
             result = response.json()
             transcription = result.get("text", "")
-            return transcription
+            return {"status": True, "message": transcription}
         else:
             print(
                 f"🔥 utils/openai/common: [whisper_speech_to_text] failed. Returning fallback message 🔥: {response.status_code}"
             )
-            return fallback_message
+            return {"status": False, "message": fallback_message}
     except requests.Timeout:
         if count < 3:
             print(
@@ -349,10 +349,10 @@ async def whisper_speech_to_text(file, count: int):
             print(
                 "🔥 utils/openai/common: [whisper_speech_to_text] failed. Returning fallback message 🔥"
             )
-            return fallback_message
+            return {"status": False, "message": fallback_message}
     except Exception as e:
         print(
             "🔥 utils/openai/common: [whisper_speech_to_text] failed. Returning fallback message 🔥",
             e,
         )
-        return fallback_message
+        return {"status": False, "message": fallback_message}

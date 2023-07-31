@@ -129,9 +129,8 @@ async def handle_translate(request: Request) -> Dict[str, str]:
         if not source_lang or not text:
             raise HTTPException(status_code=400, detail="Invalid request parameters.")
 
-        translated_text = await deepl_translate(text, source_lang)
-
-        return {"message": "Translation complete.", "translatedText": translated_text}
+        res = await deepl_translate(text, source_lang)
+        return {"text": res["translatedText"]}
     except Exception as e:
         print("🔥 router/api: [util/translate] failed 🔥", e)
         raise HTTPException(
@@ -160,11 +159,17 @@ async def handle_text_to_speech(request: Request, response_class=PlainTextRespon
 
 
 @router.post("/api/v1/util/speechtotext", tags=["api"])
-async def handle_speech_to_text(file: UploadFile):
+async def handle_speech_to_text(file: UploadFile) -> Dict[str, str]:
     try:
         result = await whisper_speech_to_text(file=file.file, count=0)
-        print("[SERVICE UTIL] Whisper Paraphrase: ", result)
-        return {"text", result}
+        print(
+            f"""
+            ■■■■■■■■■[OPENAI SPEECHTOTEXT RESULT]■■■■■■■■■",
+            Message: {result["message"]}
+            Status: {result["status"]}
+            """
+        )
+        return result
     except Exception as e:
         print("🔥 router/api: [util/speechtotext] failed 🔥", e)
         raise HTTPException(
