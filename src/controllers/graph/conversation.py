@@ -14,26 +14,36 @@ from src.utils.redis import (
     getLastPicassoMessage,
     isTimeSpanOver,
     get_string_dialogue_as_teacher,
+    get_last_directive_from_redis,
+    append_directive,
 )
 from src.utils.openai.common import (
     getPicassoAnswerFewShot,
     getPicassoAnswerFewShotTextDavinci,
 )
 from src.utils.openai.graph import get_student_analysis, get_directives
-from src.utils.common import run_task_in_background
+from src.utils.common import run_task_in_background, replace_entity_to_picasso
 
 
 async def generate_pedagogic_strategy(sessionID: str, user: str, agent: str):
-    dialogue = await get_string_dialogue_as_teacher(sessionID=sessionID)
-    analysis = await get_student_analysis(
-        dialogue=dialogue,
-        user_message=user,
-        assistant_message=agent,
-        attempt_count=0,
-    )
-    directives = await get_directives(
-        analysis=analysis, user_message=user, assistant_message=agent, attempt_count=0
-    )
+    try:
+        dialogue = await get_string_dialogue_as_teacher(sessionID=sessionID)
+        analysis = await get_student_analysis(
+            dialogue=dialogue,
+            user_message=user,
+            assistant_message=agent,
+            attempt_count=0,
+        )
+        directives = await get_directives(
+            analysis=analysis,
+            user_message=user,
+            assistant_message=agent,
+            attempt_count=0,
+        )
+        directives = replace_entity_to_picasso(directives)
+        res = await append_directive(sessionID=sessionID, content=directives)
+    except Exception as e:
+        print("🔥 controller/conversation: [generate_pedagogic_strategy] failed 🔥", e)
 
 
 async def conversation_request_graph_response(
@@ -53,21 +63,13 @@ async def conversation_request_graph_response(
         print("🔥 controller/conversation: [conversation/0][pre-translate] failed 🔥", e)
 
     try:
-        ### ChatGPT3.5 Case ###
         dialogue = await getArrayDialogue(sessionID=sessionID)
         isOver = await isTimeSpanOver(sessionID=sessionID)
+        directive = await get_last_directive_from_redis(sessionID=sessionID)
 
         agent = await getPicassoAnswerFewShot(
             dialogue=dialogue[:-1], attempt_count=0, user_message=user
         )
-        # string_dialogue = await getStringDialogue(sessionID=sessionID)
-        # previous_agent = await getLastPicassoMessage(sessionID=sessionID)
-        # agent = await getPicassoAnswerFewShotTextDavinci(
-        #     string_dialogue=string_dialogue,
-        #     user_message=user,
-        #     agent_message=previous_agent,
-        #     attempt_count=0,
-        # )
         currentStage = "/conversation/0"
 
         if isOver:

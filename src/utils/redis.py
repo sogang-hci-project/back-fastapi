@@ -225,3 +225,43 @@ async def isTimeSpanOver(sessionID: str):
         raise HTTPException(
             status_code=500, detail="utils/redis: [isTimeSpanOver] failed"
         )
+
+
+async def append_directive(
+    sessionID: str,
+    content: str,
+):
+    try:
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+
+        conversation_time = datetime.now().timestamp()
+        directives = data["directive"] if "directive" in data else []
+        directives.append({"time": conversation_time, "content": content})
+
+        data["directive"] = directives
+        req = json.dumps(data)
+        await redisEndPoint.set(f"sess:{sessionID}", req)
+
+        return True
+    except Exception as e:
+        print("🔥 utils/redis: [append_directive] failed 🔥", e)
+
+
+async def get_last_directive_from_redis(
+    sessionID: str,
+):
+    try:
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+        directives = (
+            data["directive"] if "directive" in data else [{"time": "", "content": ""}]
+        )
+
+        return directives[-1]["content"]
+    except Exception as e:
+        print("🔥 utils/redis: [get_last_directive_from_redis] failed 🔥", e)
+        raise HTTPException(
+            status_code=500,
+            detail="utils/redis: [get_last_directive_from_redis] failed",
+        )

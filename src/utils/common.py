@@ -56,3 +56,17 @@ async def server_translate(text: str, source_lang: str):
 def run_task_in_background(task):
     loop = asyncio.get_running_loop()
     loop.create_task(task)
+
+
+def replace_entity_to_picasso(input_string: str):
+    replacements = {
+        "your": "Picasso",
+        "Your": "Picasso",
+        "art educator": "Picasso",
+        "Picasso": "you",
+    }
+
+    for old_str, new_str in replacements.items():
+        input_string = input_string.replace(old_str, new_str)
+
+    return input_string
