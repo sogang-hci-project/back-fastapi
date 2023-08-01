@@ -82,7 +82,7 @@ def joinMessageAsSentenceForSupervisor(message: dict[str, str]):
         )
 
 
-async def getStringDialogueForSupervisor(
+async def get_string_dialogue_as_teacher(
     sessionID: str,
 ):
     try:
@@ -97,10 +97,10 @@ async def getStringDialogueForSupervisor(
 
         return stringDialogue or ""
     except Exception as e:
-        print("🔥 utils/redis: [getStringDialogueForSupervisor] failed 🔥", e)
+        print("🔥 utils/redis: [get_string_dialogue_as_teacher] failed 🔥", e)
         raise HTTPException(
             status_code=500,
-            detail="router/api: [getStringDialogueForSupervisor] failed",
+            detail="router/api: [get_string_dialogue_as_teacher] failed",
         )
 
 

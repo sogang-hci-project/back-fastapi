@@ -13,13 +13,27 @@ from src.utils.redis import (
     getStringDialogue,
     getLastPicassoMessage,
     isTimeSpanOver,
-    getStringDialogueForSupervisor,
+    get_string_dialogue_as_teacher,
 )
 from src.utils.openai.common import (
     getPicassoAnswerFewShot,
     getPicassoAnswerFewShotTextDavinci,
 )
-from src.utils.openai.graph import get_instructor_comment
+from src.utils.openai.graph import get_student_analysis, get_directives
+from src.utils.common import run_task_in_background
+
+
+async def generate_pedagogic_strategy(sessionID: str, user: str, agent: str):
+    dialogue = await get_string_dialogue_as_teacher(sessionID=sessionID)
+    analysis = await get_student_analysis(
+        dialogue=dialogue,
+        user_message=user,
+        assistant_message=agent,
+        attempt_count=0,
+    )
+    directives = await get_directives(
+        analysis=analysis, user_message=user, assistant_message=agent, attempt_count=0
+    )
 
 
 async def conversation_request_graph_response(
@@ -63,14 +77,9 @@ async def conversation_request_graph_response(
     except Exception as e:
         print("🔥 controller/conversation: [conversation] failed 🔥", e)
     try:
-        sp_dialogue = await getStringDialogueForSupervisor(sessionID=sessionID)
-        await get_instructor_comment(
-            dialogue=sp_dialogue,
-            user_message=user,
-            assistant_message=agent,
-            attempt_count=0,
+        run_task_in_background(
+            generate_pedagogic_strategy(sessionID=sessionID, user=user, agent=agent)
         )
-
         await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
 
         if lang == "ko":

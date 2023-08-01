@@ -1,5 +1,6 @@
 from src.utils.api import papago_translate, deepl_translate
 import json
+import asyncio
 
 
 def print_project_initialization():
@@ -50,3 +51,8 @@ async def server_translate(text: str, source_lang: str):
             print("🔥 utils/commmon: [server_translate] failed 🔥")
             print("DeepL Error", deepl_e)
             print("Papago Error", papago_e)
+
+
+def run_task_in_background(task):
+    loop = asyncio.get_running_loop()
+    loop.create_task(task)
