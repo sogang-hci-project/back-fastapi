@@ -16,6 +16,8 @@ from src.utils.redis import (
     get_string_dialogue_as_teacher,
     get_last_directive_from_redis,
     append_directive,
+    append_analysis,
+    get_last_analysis_from_redis,
 )
 from src.utils.openai.common import (
     getPicassoAnswerFewShot,
@@ -28,14 +30,19 @@ from src.utils.common import run_task_in_background, replace_entity_to_picasso
 async def generate_pedagogic_strategy(sessionID: str, user: str, agent: str):
     try:
         dialogue = await get_string_dialogue_as_teacher(sessionID=sessionID)
+        previous_analysis = await get_last_analysis_from_redis(sessionID=sessionID)
         analysis = await get_student_analysis(
             dialogue=dialogue,
+            previous_analysis=previous_analysis,
             user_message=user,
             assistant_message=agent,
             attempt_count=0,
         )
+        res = await append_analysis(sessionID=sessionID, content=analysis)
+        previous_directives = await get_last_directive_from_redis(sessionID=sessionID)
         directives = await get_directives(
             analysis=analysis,
+            previous_directives=previous_directives,
             user_message=user,
             assistant_message=agent,
             attempt_count=0,

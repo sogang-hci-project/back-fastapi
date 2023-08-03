@@ -60,10 +60,13 @@ def run_task_in_background(task):
 
 def replace_entity_to_picasso(input_string: str):
     replacements = {
+        "You": "Picasso",
+        "you": "Picasso",
         "your": "Picasso",
         "Your": "Picasso",
         "art educator": "Picasso",
         "Picasso": "you",
+        "Picasso's": "your",
     }
 
     for old_str, new_str in replacements.items():

@@ -4,17 +4,24 @@ from src.utils.llama_index.common import retrieve_relevent_nodes_in_string
 
 
 async def get_student_analysis(
-    dialogue: list, user_message: str, assistant_message: str, attempt_count: int
+    dialogue: list,
+    previous_analysis: str,
+    user_message: str,
+    assistant_message: str,
+    attempt_count: int,
 ):
     try:
         base_instruction = f"""
             [TASK]
             You are now an art education supervisor currently supervising conversation between art educator and student about the painting Guernica. 
-            As a supervisor, monitor the progress of the student given [DIALOGUE] with [STUDENT MESSAGE].
-            Then make a three point analysis on the student learning status in terms of performance, behavior, and emotion.
+            As a supervisor, make a three analysis on student's interest, level of engagement, and characteristics to help the art educator.
+            Update and refine [PREVIOUS ANALYSIS] based on the [STUDENT MESSAGE].
             
             [DIALOGUE]
             {dialogue}
+            
+            [PREVIOUS ANALYSIS]
+            {previous_analysis}
             
             [STUDENT MESSAGE]
             Student: {user_message}
@@ -65,20 +72,26 @@ async def get_student_analysis(
 async def get_directives(
     analysis: str,
     user_message: str,
+    previous_directives: str,
     assistant_message: str,
     attempt_count: int,
 ):
     try:
         base_instruction = f"""
             [TASK]
-            You are now an art education supervisor currently supervising conversation between the art educator and student about the painting Guernica. 
-            As a supervisor, provide directive on how to improve educator reponse in terms of communication skill reflecting educator's message in [LATEST MESSAGE].
-            Use anaysis on student provided in [ANALYSIS].
-            Make a three point conversational directive for the art educator.
+            You are now an screen play supervisor currently supervising role play between the actor as Pablo Picasso and the student about the painting Guernica. 
+            As a supervisor, provide directive on how to respond to student reflecting actor's message in [LATEST MESSAGE].
+            Use anaysis on student provided in [ANALYSIS] to provide directive that matches the student.
+            The goal of directive is to make student immersed into conversation and learn about the painting.          
+            [LATEST MESSAGE] is the result of the [PREVIOUS DIRECTIVE]. Update the directive to increase student engagement.
+            Make a three point directive for the actor.
+            
+            [PREVIOUS DIRECTIVE]
+            {previous_directives}
             
             [LATEST MESSAGE]
             Student: {user_message}
-            Educator: {assistant_message}
+            Actor: {assistant_message}
             
             [ANALYSIS]
             {analysis}
@@ -87,7 +100,7 @@ async def get_directives(
             - Be concise.
             
             [GOAL]
-            Follow the [TASK] and generate three directive for the art eduactor.
+            Follow the [TASK] and generate three directive for the actor.
             
             Directives:
         """
@@ -138,9 +151,14 @@ async def get_picasso_answer_few_shot_graph(
 
         base_instruction = f"""
             [TASK]
-            You are now Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica." As your student, The user is eager to learn more about this iconic painting. Please guide user through its significance and history while keeping the dialogue engaging by asking pedagogical questions to keep the conversation going.
-            As Picasso, you can begin by providing some background information on the painting and its creation. Feel free to elaborate on the context and emotions that influenced your artistic choices. Additionally, you can highlight the symbolism and deeper meaning behind the various elements in the painting.
-            To ensure an interactive and educational conversation, don't forget to engage the user with pedagogical questions that encourage critical thinking and further exploration of the artwork. You can ask user about user interpretation of certain elements or encourage user to consider the historical events that inspired "Guernica."
+            You are now acting as the Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica." 
+            As your student, The user is eager to learn more about this iconic painting. 
+            Please guide user through its significance and history while keeping the dialogue engaging by asking questions to keep the conversation going.
+            As Picasso, you can begin by providing some background information on the painting and its creation. 
+            Feel free to elaborate on the context and emotions that influenced your artistic choices. 
+            Additionally, you can highlight the symbolism and deeper meaning behind the various elements in the painting.
+            To ensure an interactive and educational conversation, don't forget to engage the user with questions that encourage critical thinking and further exploration of the artwork. 
+            You can ask user about user interpretation of certain elements or encourage user to consider the historical events that inspired "Guernica."
 
             [RULE]
             - Do not exceed more than two sentence.
@@ -150,10 +168,11 @@ async def get_picasso_answer_few_shot_graph(
 
         new_instruction = f"""
             [TASK]
-            You are now Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica." As your student, The user is eager to learn more about this iconic painting. Please guide user through its significance and history while keeping the dialogue engaging by asking pedagogical questions to keep the conversation going.
-            As Picasso, you can begin by providing some background information on the painting and its creation. Feel free to elaborate on the context and emotions that influenced your artistic choices. Additionally, you can highlight the symbolism and deeper meaning behind the various elements in the painting.
-            To ensure an interactive and educational conversation, don't forget to engage the user with pedagogical questions that encourage critical thinking and further exploration of the artwork. You can ask user about user interpretation of certain elements or encourage user to consider the historical events that inspired "Guernica."
-            Reference on following [DATA] for informations. Adhere to the [DIRECTIVE] provided below.
+            You are now acting as the Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica." 
+            As your student, The user is eager to learn more about your iconic painting. 
+            As the Pablo Picasso, generate adequate response to the student following the [DIRECTIVE].
+            Keep the dialogue engaging by asking a question to keep the conversation going.
+            Reference on following [DATA] for informations.
             
             [DATA]
             {nodes}
@@ -165,6 +184,7 @@ async def get_picasso_answer_few_shot_graph(
             - Do not exceed more than two sentence.
             - Ask a question at the end of the conversation.
             - Reply as Pablo Picasso.
+            - Be concise.
             
             [GOAL]
             Follow [TASK] and generate a reply as a Pablo Picasso.

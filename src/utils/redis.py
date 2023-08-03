@@ -265,3 +265,43 @@ async def get_last_directive_from_redis(
             status_code=500,
             detail="utils/redis: [get_last_directive_from_redis] failed",
         )
+
+
+async def append_analysis(
+    sessionID: str,
+    content: str,
+):
+    try:
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+
+        conversation_time = datetime.now().timestamp()
+        analyses = data["analysis"] if "analysis" in data else []
+        analyses.append({"time": conversation_time, "content": content})
+
+        data["analysis"] = analyses
+        req = json.dumps(data)
+        await redisEndPoint.set(f"sess:{sessionID}", req)
+
+        return True
+    except Exception as e:
+        print("🔥 utils/redis: [append_directive] failed 🔥", e)
+
+
+async def get_last_analysis_from_redis(
+    sessionID: str,
+):
+    try:
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+        analyses = (
+            data["analysis"] if "analysis" in data else [{"time": "", "content": ""}]
+        )
+
+        return analyses[-1]["content"]
+    except Exception as e:
+        print("🔥 utils/redis: [get_last_directive_from_redis] failed 🔥", e)
+        raise HTTPException(
+            status_code=500,
+            detail="utils/redis: [get_last_directive_from_redis] failed",
+        )
