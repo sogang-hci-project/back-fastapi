@@ -7,5 +7,6 @@ client
 .env
 documents
 representations
+data
 
 __pycache__/
