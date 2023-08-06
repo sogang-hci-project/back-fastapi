@@ -1,0 +1,39 @@
+MATCH (startNode {name: "horse"}), (endNode:ARTIST {name: "Pablo_Picasso"})
+MATCH path = shortestPath((startNode)-[*]-(endNode))
+RETURN nodes(path), relationships(path)
+
+===
+
+MATCH (artist:ARTIST {name: "Pablo_Picasso"})<-[relationship]-(event:EVENT)
+MATCH (event)-[outgoing_rel]->(end_node)
+WITH event, COUNT(outgoing_rel) AS outgoingCount
+ORDER BY outgoingCount DESC
+LIMIT 10
+MATCH (event)-[outgoing_rel]->(end_node)
+RETURN event, outgoing_rel, end_node
+
+===
+
+MATCH (artist:ARTIST {name: "Pablo_Picasso"})<-[relationship]-(event:EVENT)
+MATCH (event)-[out]->(end_node)
+WITH event, COUNT(out) AS outgoingCount
+ORDER BY outgoingCount DESC
+LIMIT 1
+RETURN end_node
+
+===
+
+MATCH (artist:ARTIST {name: "Pablo_Picasso"}) <- [relationship] - (event: EVENT)
+
+WITH artist, event, COUNT(*) AS eventCount
+ORDER BY eventCount DESC
+LIMIT 5
+RETURN artist, event, eventCount
+
+===
+
+MATCH (artist:ARTIST {name: "Pablo_Picasso"})-[relationship]->(event:EVENT)
+WITH artist, event, COUNT(*) AS eventCount
+ORDER BY eventCount DESC
+LIMIT 5
+RETURN artist, event, eventCount
