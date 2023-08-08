@@ -10,3 +10,5 @@ representations
 data
 
 __pycache__/
+scripts/jsons
+scripts/jsons_emb

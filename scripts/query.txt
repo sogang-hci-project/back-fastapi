@@ -37,3 +37,34 @@ WITH artist, event, COUNT(*) AS eventCount
 ORDER BY eventCount DESC
 LIMIT 5
 RETURN artist, event, eventCount
+
+===
+ROLE: Remove start_node, end_node, and relationship
+
+MATCH (n {name: 'Basel_citizens'})
+OPTIONAL MATCH (n)-[r]-(c)
+RETURN n, r, c
+
+===
+ROLE: merge nodes with same name
+
+MATCH (n {name: 'Spaniards'})
+WITH collect(n) AS nodes
+CALL apoc.refactor.mergeNodes(nodes, {properties:'discard', label: 'GROUP', mergeRels:true})
+YIELD node
+RETURN node
+
+===
+ROLE: Find duplicated nodes with as event
+
+MATCH (n:EVENT)
+WHERE size(labels(n)) > 1
+RETURN n
+
+===
+ROLE: Find all simple path with distance of 3 between two nodes
+
+MATCH (startNode {name: "Pablo_Picasso"}), (endNode {name: "bull"})
+CALL apoc.algo.allSimplePaths(startNode, endNode, '', 3) YIELD path
+RETURN path
+LIMIT 10;
