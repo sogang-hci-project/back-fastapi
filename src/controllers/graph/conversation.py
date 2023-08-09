@@ -10,47 +10,15 @@ from src.utils.redis import (
     getArrayDialogue,
     appendDialogue,
     appendKoreanDialogue,
-    getStringDialogue,
-    getLastPicassoMessage,
     isTimeSpanOver,
-    get_string_dialogue_as_teacher,
     get_last_directive_from_redis,
-    append_directive,
-    append_analysis,
-    get_last_analysis_from_redis,
 )
-from src.utils.openai.common import (
-    getPicassoAnswerFewShot,
-    getPicassoAnswerFewShotTextDavinci,
+from src.utils.openai.graph import (
+    get_picasso_answer_few_shot_graph,
+    retrieve_subjects,
 )
-from src.utils.openai.graph import get_student_analysis, get_directives
 from src.utils.common import run_task_in_background, replace_entity_to_picasso
-
-
-async def generate_pedagogic_strategy(sessionID: str, user: str, agent: str):
-    try:
-        dialogue = await get_string_dialogue_as_teacher(sessionID=sessionID)
-        previous_analysis = await get_last_analysis_from_redis(sessionID=sessionID)
-        analysis = await get_student_analysis(
-            dialogue=dialogue,
-            previous_analysis=previous_analysis,
-            user_message=user,
-            assistant_message=agent,
-            attempt_count=0,
-        )
-        res = await append_analysis(sessionID=sessionID, content=analysis)
-        previous_directives = await get_last_directive_from_redis(sessionID=sessionID)
-        directives = await get_directives(
-            analysis=analysis,
-            previous_directives=previous_directives,
-            user_message=user,
-            assistant_message=agent,
-            attempt_count=0,
-        )
-        directives = replace_entity_to_picasso(directives)
-        res = await append_directive(sessionID=sessionID, content=directives)
-    except Exception as e:
-        print("🔥 controller/conversation: [generate_pedagogic_strategy] failed 🔥", e)
+from src.services.graph import generate_pedagogic_strategy, get_closest_entities
 
 
 async def conversation_request_graph_response(
@@ -59,6 +27,8 @@ async def conversation_request_graph_response(
     agent = ""
     currentStage = ""
     nextStage = ""
+
+    ## [PRE-TRANSLATE]
 
     try:
         if lang == "ko":
@@ -69,13 +39,22 @@ async def conversation_request_graph_response(
     except Exception as e:
         print("🔥 controller/conversation: [conversation/0][pre-translate] failed 🔥", e)
 
+    ## [RESPONSE GENERATION]
+
     try:
         dialogue = await getArrayDialogue(sessionID=sessionID)
         isOver = await isTimeSpanOver(sessionID=sessionID)
         directive = await get_last_directive_from_redis(sessionID=sessionID)
+        subjects = await retrieve_subjects(sentence=user, attempt_count=0)
+        closest_entities_1 = await get_closest_entities(subjects[0])
+        closest_entities_2 = await get_closest_entities(subjects[1])
+        print(closest_entities_1, closest_entities_2)
 
-        agent = await getPicassoAnswerFewShot(
-            dialogue=dialogue[:-1], attempt_count=0, user_message=user
+        agent = await get_picasso_answer_few_shot_graph(
+            dialogue=dialogue[:-1],
+            attempt_count=0,
+            user_message=user,
+            directive=directive,
         )
         currentStage = "/conversation/0"
 
@@ -84,13 +63,27 @@ async def conversation_request_graph_response(
         else:
             nextStage = "/conversation/0"
     except Exception as e:
-        print("🔥 controller/conversation: [conversation] failed 🔥", e)
+        print(
+            "🔥 controller/conversation: [conversation/0][response-generation] failed 🔥",
+            e,
+        )
+
+    ## [SELF-EVALUATION]
+
     try:
         run_task_in_background(
             generate_pedagogic_strategy(sessionID=sessionID, user=user, agent=agent)
         )
         await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
 
+    except Exception as e:
+        print(
+            "🔥 controller/conversation: [conversation/0][self-evaluation] failed 🔥", e
+        )
+
+    ## [POST TRNASLATE]
+
+    try:
         if lang == "ko":
             agent = await server_translate(agent, source_lang="en")
             await appendKoreanDialogue(

@@ -6,11 +6,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.routers import client, api
-from src.utils.common import print_project_initialization
+from src.utils.common import print_project_initialization, load_neo4j_entities
 from src.utils.redis import check_redis
 from src.utils.openai.initialize import register_openai_variable
 from src.utils.llama_index.chroma import check_chroma_db
 from src.utils.llama_index.common import retrieve_relevent_nodes_in_string
+from src.services.graph import get_closest_entities
 
 app = FastAPI()
 
@@ -28,6 +29,9 @@ async def initialize_server():
         register_openai_variable()
         await check_redis()
         check_chroma_db()
+        load_neo4j_entities()
+        v = await get_closest_entities("Face of the horse")
+        print(v)
     except Exception as e:
         print("🔥 startup: [initialize_server] failed 🔥", e)
 

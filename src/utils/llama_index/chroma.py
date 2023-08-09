@@ -6,7 +6,8 @@ sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFuncti
     model_name="all-mpnet-base-v2"
 )
 collection = client.get_or_create_collection(
-    name="picasso_collection_wikipedia", embedding_function=sentence_transformer_ef
+    name="picasso_kg_collection_wikipedia_core",
+    embedding_function=sentence_transformer_ef,
 )
 
 

@@ -1,6 +1,7 @@
 from src.utils.api import papago_translate, deepl_translate
 import json
 import asyncio
+import numpy as np
 
 
 def print_project_initialization():
@@ -73,3 +74,24 @@ def replace_entity_to_picasso(input_string: str):
         input_string = input_string.replace(old_str, new_str)
 
     return input_string
+
+
+neo4j_entities = []
+
+
+def load_neo4j_entities():
+    try:
+        global neo4j_entities
+        with open("src/representations/entities.json", "r") as json_file:
+            neo4j_entities.extend(json.load(json_file))
+        print(f"Loaded [entities_json] with {len(neo4j_entities)} entities")
+
+    except Exception as e:
+        print("🔥 startup: [common/load_neo4j_entities] failed 🔥", e)
+
+
+def cosine_similarity(a, b):
+    dot_product = np.dot(a, b)
+    magnitude_a = np.linalg.norm(a)
+    magnitude_b = np.linalg.norm(b)
+    return dot_product / (magnitude_a * magnitude_b)

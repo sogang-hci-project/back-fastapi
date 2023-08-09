@@ -15,6 +15,7 @@ class CustomError(Exception):
 
 async def check_redis():
     res = await redisEndPoint.ping()
+    print("Connected to [redis] with everlasting friendship")
     if res == False:
         throw_exception("Redis initialization failed", 500)
 
@@ -209,8 +210,8 @@ async def isTimeSpanOver(sessionID: str):
         span = current_timestamp - init_timestamp
         print(
             f"""
-            ■■■■■■■■■[TIME SPAN CALCULATION]■■■■■■■■■
-            {span} seconds has been passed
+■■■■■■■■■[TIME SPAN CALCULATION]■■■■■■■■■
+{span} seconds has been passed
             """
         )
 

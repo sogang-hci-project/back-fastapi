@@ -42,14 +42,21 @@ async def handle_request_zero():
             "init-timestamp": current_timestamp,
         }
         await redisEndPoint.set(f"sess:{id_current}", value=json.dumps(data))
-
+        #### [ISSUE] DEV Purpose, DELETE IT ON SERVE
         return {
             "data": {
                 "sessionID": id_current,
                 "currentStage": "/register",
-                "nextStage": "/greeting/0",
+                "nextStage": "/conversation/0",
             }
         }
+        # return {
+        #     "data": {
+        #         "sessionID": id_current,
+        #         "currentStage": "/register",
+        #         "nextStage": "/greeting/0",
+        #     }
+        # }
     except Exception as e:
         print("🔥 router/api: [register] failed 🔥", e)
         raise HTTPException(status_code=500, detail="router/api: [register] failed")
