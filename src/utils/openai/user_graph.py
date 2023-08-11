@@ -31,9 +31,9 @@ async def extract_entity_from_user_message(
         base_instruction = """
             [TASK]
             Given the user message, extract following informations.
-            - FACT: Factual information or evaluation about the Student.
-            - EVENT: Episode or event between the Student and the Pablo Picasso.
-            - IDEA: Projected opinion or idea by the Student.
+            - FACT: Factual information or evaluation about the student.
+            - EVENT: Episode or event between the student and the picasso.
+            - IDEA: Projected opinion or idea by the student.
             Extract at least one for each FACT, EVENT, and IDEA.
             The dialogue is about the painting Guernica. 
             Return in following [FORMAT], DO NOT OMIT
@@ -43,29 +43,29 @@ async def extract_entity_from_user_message(
         """
 
         example_message_one = """
-        Pablo Picasso: Absolutely. Do you think inclusion of newspaper print has made the painting more impactful?
-        Student: Yeah, I think so, because right now it's just white and black, so I think it could have a different texture or something like that.
+        picasso: Absolutely. Do you think inclusion of newspaper print has made the painting more impactful?
+        student: Yeah, I think so, because right now it's just white and black, so I think it could have a different texture or something like that.
         """
 
-        example_return_one = '[{"type": "EVENT", "content": "Student agreed on the idea that inclusion of newspaper increased the impact.", "entities": [{"name": "Student"}, {"name": "newspaper"}, {"name": "impact"}]}, {"type": "IDEA", "content": "The Guernica could have a different texture to increase the impact.", "entities": [{"name": "Guernica"}, {"name": "texture"}, {"name": "impact"}]}, {"type": "FACT", "content": "Student is likely agree on idea when given specific detail", "entities": [{"name": "idea"}, {"name": "Student"}, {"name": "detail"}]}]'
+        example_return_one = '[{"type": "EVENT", "content": "student agreed on the idea that inclusion of newspaper increased the impact.", "entities": [{"name": "student"}, {"name": "newspaper"}, {"name": "impact"}]}, {"type": "IDEA", "content": "The Guernica could have a different texture to increase the impact.", "entities": [{"name": "Guernica"}, {"name": "texture"}, {"name": "impact"}]}, {"type": "FACT", "content": "student is likely agree on idea when given specific detail", "entities": [{"name": "idea"}, {"name": "student"}, {"name": "detail"}]}]'
 
         example_message_two = """
-        Pablo Picasso: Welcome. My name is Pablo Picasso, a spanish painter. Can you introduce yourself?
-        Student: I am a 28-year-old graduate student.
+        picasso: Welcome. My name is picasso, a spanish painter. Can you introduce yourself?
+        student: I am a 28-year-old graduate student.
         """
 
-        example_return_two = '[{"type": "FACT", "content": "The student is a 28-year-old", "entities": [{"name": "28-year-old"}, {"name": "graduate student"}]}, {"type": "FACT", "content": "The student is a graduate student.", "entities": [{"name": "graduate student"}]}, {"type": "EVENT", "content": "Picasso and student exchanged welcoming conversation.", "entities": [{"name": "conversation"}, {"name": "Picasso"}, {"name": "Student"}]}, {"type": "IDEA", "content": "Student identifies as 28 years old", "entities": [{"name": "student"}, {"name": "identification"}]}]'
+        example_return_two = '[{"type": "FACT", "content": "The student is a 28-year-old", "entities": [{"name": "28-year-old"}, {"name": "graduate student"}]}, {"type": "FACT", "content": "The student is a graduate student.", "entities": [{"name": "graduate student"}]}, {"type": "EVENT", "content": "picasso and student exchanged welcoming conversation.", "entities": [{"name": "conversation"}, {"name": "picasso"}, {"name": "student"}]}, {"type": "IDEA", "content": "student identifies as 28 years old", "entities": [{"name": "student"}, {"name": "identification"}]}]'
 
         example_message_three = """
-        Pablo Picasso: That's an insightful observation. So, would you say that the choice of color, or in this case the lack of it, can have as much impact as the subject matter itself in a painting?
-        Student: Yes, I think so, and I think it would have been difficult to reveal more of what I was trying to say if I had revealed this distracting picture with something colored.
+        picasso: That's an insightful observation. So, would you say that the choice of color, or in this case the lack of it, can have as much impact as the subject matter itself in a painting?
+        student: Yes, I think so, and I think it would have been difficult to reveal more of what I was trying to say if I had revealed this distracting picture with something colored.
         """
 
-        example_return_three = '[{"type": "IDEA", "content": "Choice of color can impact the matter of painting, such as meaning", "entities": [{"name": "meaning"}, {"name": "color"}, {"name": "impact"}, {"name": "painting"}]}, {"type": "EVENT", "content": "The student strengthens the view by agreeing to affirming question by Picasso", "entities": [{"name": "Picasso"}, {"name": "view"}, {"name": "agreement"}, {"name": "student"}]}, {"type": "FACT", "content": "The student can build a hypothesis and imagine the consequence.", "entities": [{"name": "Student"}, {"name": "hypothesis"}, {"name": "consequence"}]}]'
+        example_return_three = '[{"type": "IDEA", "content": "Choice of color can impact the matter of painting, such as meaning", "entities": [{"name": "meaning"}, {"name": "color"}, {"name": "impact"}, {"name": "painting"}]}, {"type": "EVENT", "content": "The student strengthens the view by agreeing to affirming question by picasso", "entities": [{"name": "picasso"}, {"name": "view"}, {"name": "agreement"}, {"name": "student"}]}, {"type": "FACT", "content": "The student can build a hypothesis and imagine the consequence.", "entities": [{"name": "student"}, {"name": "hypothesis"}, {"name": "consequence"}]}]'
 
         new_message = f"""
-        Pablo Picasso: {assistant_message}
-        Student: {user_message}
+        picasso: {assistant_message}
+        student: {user_message}
         """
 
         messages = [

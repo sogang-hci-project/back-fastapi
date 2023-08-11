@@ -337,7 +337,7 @@ async def extract_core_subject(sentence: str, attempt_count: int):
         base_instruction = """
             [TASK]
             Given the user sentence, retreive the up to three core keywords in context from the sentence as a python list.
-            Exclude Pablo Picasso from the keyword.
+            Exclude Pablo Picasso from the keyword. RETURN IN [FORMAT].
             [FORMAT]
             [{"keyword": "name"}, {"keyword": "name"}, {"keyword": "name"}]
         """
@@ -387,13 +387,14 @@ async def extract_core_subject(sentence: str, attempt_count: int):
     except Exception as e:
         print(
             f"🔥 openai/graph/extract_core_subject: [extract_core_subject] failed {attempt_count + 1} times🔥",
+            res,
             e,
         )
         if attempt_count + 1 == 3:
             print(
                 "🔥 openai/graph/extract_core_subject: [extract_core_subject] max error reached🔥"
             )
-            return ["Guernica"]
+            return [{"keyword": "Guernica"}]
         await asyncio.sleep(1)
         return await extract_core_subject(
             sentence=sentence,
@@ -401,7 +402,7 @@ async def extract_core_subject(sentence: str, attempt_count: int):
         )
 
 
-def transform_entity_to_text(entities: List[Neo4jNode]):
+def transform_entity_to_text_student(entities: List[Neo4jNode]):
     try:
         event_list = ""
         fact_list = ""
@@ -409,24 +410,54 @@ def transform_entity_to_text(entities: List[Neo4jNode]):
 
         for entity_item in entities:
             if entity_item.node_type == "EVENT":
-                event_list += "-" + entity_item.content + "\n"
+                event_list += "-Event with the student: " + entity_item.content + "\n"
                 # event_list += "Event: \n" + entity_item.content + "\n"
                 # event_list += (
                 #     "Detail: \n" + retreive_node_by_id(entity_item.id) + "\n\n"
                 # )
             elif entity_item.node_type == "FACT":
-                fact_list += "-" + entity_item.content + "\n"
+                fact_list += "-Thoughts on the student: " + entity_item.content + "\n"
                 # fact_list += "Fact:\n " + entity_item.content + "\n"
                 # fact_list += "Detail: \n" + retreive_node_by_id(entity_item.id) + "\n\n"
             elif entity_item.node_type == "IDEA":
-                idea_list += "-" + entity_item.content + "\n"
+                idea_list += "-Student idea:" + entity_item.content + "\n"
                 # idea_list += "Idea: \n" + entity_item.content + "\n"
                 # idea_list += "Detail: \n" + retreive_node_by_id(entity_item.id) + "\n\n"
 
         return event_list, fact_list, idea_list
     except Exception as e:
         print(
-            f"🔥 utils/openai/graph: [transform_entity_to_text] failedssssss🔥",
+            f"🔥 utils/openai/graph: [transform_entity_to_text_student] failedss🔥",
+            e,
+        )
+
+
+def transform_entity_to_text_neo4j(entities: List[Neo4jNode]):
+    try:
+        event_list = ""
+        fact_list = ""
+        idea_list = ""
+
+        for entity_item in entities:
+            if entity_item.node_type == "EVENT":
+                event_list += "-Picasso Experience: " + entity_item.content + "\n"
+                # event_list += "Event: \n" + entity_item.content + "\n"
+                # event_list += (
+                #     "Detail: \n" + retreive_node_by_id(entity_item.id) + "\n\n"
+                # )
+            elif entity_item.node_type == "FACT":
+                fact_list += "-Relevent Fact: " + entity_item.content + "\n"
+                # fact_list += "Fact:\n " + entity_item.content + "\n"
+                # fact_list += "Detail: \n" + retreive_node_by_id(entity_item.id) + "\n\n"
+            elif entity_item.node_type == "IDEA":
+                idea_list += "-Idea on Topic:" + entity_item.content + "\n"
+                # idea_list += "Idea: \n" + entity_item.content + "\n"
+                # idea_list += "Detail: \n" + retreive_node_by_id(entity_item.id) + "\n\n"
+
+        return event_list, fact_list, idea_list
+    except Exception as e:
+        print(
+            f"🔥 utils/openai/graph: [transform_entity_to_text_neo4j] failedss🔥",
             e,
         )
 
@@ -438,17 +469,20 @@ async def get_picasso_answer_few_shot_graph_using_entity(
     attempt_count: int,
     entities: List[Neo4jNode],
     user_entities: List[Neo4jNode],
+    next_topic: Neo4jNode,
 ):
     try:
         (
             event_list,
             fact_list,
             idea_list,
-        ) = transform_entity_to_text(entities=entities)
+        ) = transform_entity_to_text_neo4j(entities=entities)
 
-        (user_event_list, user_fact_list, user_idea_list) = transform_entity_to_text(
-            entities=user_entities
-        )
+        (
+            user_event_list,
+            user_fact_list,
+            user_idea_list,
+        ) = transform_entity_to_text_student(entities=user_entities)
 
         query_base = (
             "While looking at the painting Guernica by Pablo Picasso, " + user_message
@@ -460,23 +494,22 @@ async def get_picasso_answer_few_shot_graph_using_entity(
 You are now acting as the Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica". 
 Make a reply to the user message with following instructions.
 - Make retrospective narrration as Pablo Picasso based on the [PICASSO MEMORY].
-- Reference on following [CONVERSATION MEMORY] to link between student's idea.
-- Ask question that can provoke student's idea on information in [IDEA].
+- Reference on following [CONVERSATION MEMORY] and metion about previous interaction with the student.
+- Ask question that implicitly refer to information in the [NEXT_TOPIC] if provided.
 
 [PICASSO MEMORY]
-{event_list}
-{fact_list}
+{event_list}{fact_list}
 
 [CONVERSATION MEMORY]
-{user_event_list}
-{user_fact_list}
-{user_idea_list}
+{user_event_list}{user_fact_list}{user_idea_list}
 
-[IDEA]
-{idea_list}
+[NEXT_TOPIC]
+{next_topic.content}
 
 [RULE]
-- Maxmimum Picasso answer length is 3 sentence.
+- Maxmimum Picasso answer length is 3 sentence. IMPORTANT!!
+- Be concise.
+- Use Easy Word.
 
 [GOAL]
 Follow [TASK] and generate a reply as a Pablo Picasso.
@@ -495,7 +528,7 @@ Follow [TASK] and generate a reply as a Pablo Picasso.
             # model="gpt-4",
             model="gpt-3.5-turbo",
             messages=messages,
-            max_tokens=100,
+            max_tokens=120,
             temperature=0,
         )
 

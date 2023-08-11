@@ -335,3 +335,55 @@ async def get_networkx_graph(sessionID: str) -> nx.Graph:
     except Exception as e:
         print("🔥 utils/redis: [get_networkx_graph] failed 🔥", e)
         return nx.Graph()
+
+
+async def add_topic_list(sessionID: str, topic_user: str, topic_neo4j):
+    try:
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+        if "topic_list_user" in data:
+            topic_list_user = data["topic_list_user"]
+            topic_list_user.append(topic_user)
+        else:
+            topic_list_user = [topic_user]
+        if "topic_list_neo4j" in data:
+            topic_list_neo4j = data["topic_list_neo4j"]
+            topic_list_neo4j.append(topic_neo4j)
+        else:
+            topic_list_neo4j = [topic_neo4j]
+
+        data["topic_list_user"] = topic_list_user
+        data["topic_list_neo4j"] = topic_list_neo4j
+
+        req = json.dumps(data)
+        await redisEndPoint.set(f"sess:{sessionID}", req)
+
+    except Exception as e:
+        print("🔥 utils/redis: [add_topic_list] failed 🔥", e)
+        return nx.Graph()
+
+
+async def get_user_topic_list(sessionID: str):
+    try:
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+        if "topic_list_user" in data:
+            return data["topic_list_user"]
+        else:
+            return []
+    except Exception as e:
+        print("🔥 utils/redis: [get_user_topic_list] failed 🔥", e)
+        return nx.Graph()
+
+
+async def get_neo4j_topic_list(sessionID: str):
+    try:
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+        if "topic_list_neo4j" in data:
+            return data["topic_list_neo4j"]
+        else:
+            return []
+    except Exception as e:
+        print("🔥 utils/redis: [get_neo4j_topic_list] failed 🔥", e)
+        return nx.Graph()

@@ -191,6 +191,9 @@ async def find_path_to_nearest_event_entity(entity_name: str, count: int):
             database_="neo4j",
         )
 
+        if len(records) == 0:
+            return []
+
         items = records[0]
         nodes = items[0]
         extracted_informations = []
@@ -208,3 +211,75 @@ async def find_path_to_nearest_event_entity(entity_name: str, count: int):
             f"🔥 utils/neo4j/common/find_path_to_nearest_event_entity: [find_path_to_nearest_event_entity] failed 🔥",
             e,
         )
+        return []
+
+
+def decide_label_type(labels):
+    information = ["EVENT", "FACT", "IDEA"]
+
+    for label in labels:
+        if label in information:
+            return label
+    if labels:
+        return "ENTITY"
+
+
+async def find_most_dense_neighbor_entity(entity_name: str, topic_list: list):
+    try:
+        exclude_string = ""
+        for topic_item in topic_list:
+            exclude_string += f'AND middleNode.name <> "{topic_item}" '
+
+        query = f"""
+                MATCH (start {{name: "{entity_name}"}})
+                MATCH (startNode)-[]-(middleNode)-[]-(targetNode)
+                WHERE NOT targetNode:EVENT AND NOT targetNode:FACT AND NOT targetNode:IDEA AND targetNode.name <> "Pablo_Picasso" AND targetNode.name <> "Guernica" {exclude_string}
+                WITH targetNode, middleNode, COUNT{{(targetNode)-[]-()}} as relCount
+                ORDER BY relCount DESC
+                LIMIT 1
+                RETURN middleNode, labels(middleNode) as labels;
+                """
+        # query = f"""
+        #         MATCH (start {{name: "{entity_name}"}})
+        #         MATCH (startNode)-[]-(middleNode)-[]-(targetNode)
+        #         WHERE NOT targetNode:EVENT AND NOT targetNode:FACT AND NOT targetNode:IDEA AND targetNode.name <> "Pablo_Picasso" AND targetNode.name <> "Guernica" {exclude_string}
+        #         WITH targetNode, middleNode, COUNT{{(targetNode)-[]-()}} as relCount
+        #         ORDER BY relCount DESC
+        #         LIMIT 1
+        #         RETURN middleNode, labels(middleNode) as labels;
+        #         """
+
+        records, summary, keys = driver.execute_query(
+            query,
+            database_="neo4j",
+        )
+        item = records[0]["middleNode"]
+        labels = records[0]["labels"]
+
+        item_summary = (
+            item._properties["summary"] if "summary" in item._properties else ""
+        )
+        item_name = item._properties["name"]
+        item_id = item._properties["id"]
+        item_content = remove_underscore(item_name + " " + item_summary)
+        item_type = decide_label_type(labels)
+
+        item = Neo4jNode(
+            node_id=item_id,
+            node_label=labels,
+            name=item_name,
+            content=item_content,
+            node_type=item_type,
+        )
+
+        # print("■■■■■■■■■[Next Topic To Discuss]■■■■■■■■■")
+        # print(item)
+
+        return item
+
+    except Exception as e:
+        print(
+            f"🔥 utils/neo4j/common/find_most_dense_neighbor_entity: [find_most_dense_neighbor_entity] failed 🔥",
+            e,
+        )
+        return None

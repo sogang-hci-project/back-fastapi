@@ -3,6 +3,7 @@ from src.utils.langchain.common import embed_model
 from src.utils.common import (
     cosine_similarity,
 )
+from src.utils.redis import get_user_topic_list
 from src.utils.neo4j.common import Neo4jNode
 from typing import List
 
@@ -62,3 +63,33 @@ async def get_closest_information_entities(
     except Exception as e:
         print("🔥 utils/networkx: [get_closest_information_entities] failed 🔥", e)
         return []
+
+
+async def get_most_dense_entity(user_graph: nx.Graph, sessionID: str):
+    try:
+        if len(user_graph.nodes()) == 0:
+            return ""
+        user_nodes = user_graph.nodes()
+        user_entities = []
+        topic_list = await get_user_topic_list(sessionID=sessionID)
+
+        filter_list = ["picasso", "student", "guernica"]
+        filter_list.extend(topic_list)
+
+        for node_item in user_nodes:
+            if user_graph.nodes[node_item]["label"] == "ENTITY":
+                user_entities.append(node_item)
+
+        relation_counts = {
+            entity: len(list(user_graph.neighbors(entity))) for entity in user_entities
+        }
+        sorted_entities = sorted(
+            relation_counts.keys(), key=lambda x: relation_counts[x], reverse=True
+        )
+        final_entities = list(
+            filter(lambda item: item not in filter_list, sorted_entities)
+        )
+        return final_entities[0]
+    except Exception as e:
+        print("🔥 utils/networkx: [get_most_dense_entity] failed 🔥", e)
+        return ""

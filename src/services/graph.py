@@ -7,6 +7,8 @@ from src.utils.redis import (
     get_last_analysis_from_redis,
     save_networkx_graph,
     get_networkx_graph,
+    add_topic_list,
+    get_neo4j_topic_list,
 )
 from src.utils.openai.graph import (
     get_student_analysis,
@@ -21,6 +23,8 @@ from src.utils.common import (
 from src.utils.neo4j.common import (
     find_multiple_pathes_between_two_entity,
     find_path_to_nearest_event_entity,
+    find_most_dense_neighbor_entity,
+    Neo4jNode,
 )
 from src.utils.openai.user_graph import extract_entity_from_user_message
 from src.utils.langchain.common import embed_model
@@ -105,7 +109,8 @@ async def update_user_graph(user: str, last_picasso_message: str, sessionID: str
         await save_networkx_graph(sessionID=sessionID, user_graph=user_graph)
 
         print("■■■■■■■■■[User-Graph-Update]■■■■■■■■■")
-        print(entity_for_print_list)
+        # print(entity_for_print_list)
+        print("Total Entity Count: ", len(entities))
     except Exception as e:
         print("🔥 services/graph: [update_user_graph] failed 🔥", e)
 
@@ -113,6 +118,7 @@ async def update_user_graph(user: str, last_picasso_message: str, sessionID: str
 async def get_core_subjects(sessionID: str, user: str, last_picasso_message: str):
     try:
         picasso_core_subjects = []
+        core_subjects = []
 
         if last_picasso_message != "":
             new_picasso_subject = await extract_core_subject(
@@ -120,7 +126,8 @@ async def get_core_subjects(sessionID: str, user: str, last_picasso_message: str
             )
             picasso_core_subjects.extend(new_picasso_subject)
         user_core_subjects = await extract_core_subject(sentence=user, attempt_count=0)
-        core_subjects = picasso_core_subjects + user_core_subjects
+        core_subjects.extend(picasso_core_subjects)
+        core_subjects.extend(user_core_subjects)
 
         print("■■■■■■■■■[Extracted-Core-Subjects]■■■■■■■■■")
         print(core_subjects)
@@ -145,45 +152,90 @@ def remove_duplicates_entity_by_content(input_array):
     return result
 
 
-async def get_supplementary_entities(core_subjects: list, user_graph: nx.Graph):
+async def get_supplementary_entities(core_subjects: list):
     try:
         supplementary_entities = []
-        conversation_entities = []
         for core_subject in core_subjects:
-            core_user_entity = await get_closest_user_entities(
-                core_subject["keyword"], user_graph
-            )
             core_entity = await get_closest_entities(core_subject["keyword"])
             picasso_related_entities = find_multiple_pathes_between_two_entity(
                 entity_1_name="Pablo_Picasso",
                 entity_2_name=core_entity,
-                count=10,
+                count=3,
             )
             nearest_event_entities = await find_path_to_nearest_event_entity(
                 entity_name=core_entity, count=3
             )
-            nearest_user_event_entities = await get_closest_information_entities(
-                entity_name=core_user_entity, user_graph=user_graph
-            )
             supplementary_entities.extend(nearest_event_entities)
             supplementary_entities.extend(picasso_related_entities)
-            conversation_entities.extend(nearest_user_event_entities)
 
         supplementary_entities_unique = remove_duplicates_entity_by_content(
             supplementary_entities
         )
-        conversation_entities_unique = remove_duplicates_entity_by_content(
-            conversation_entities
-        )
 
         print("■■■■■■■■■[Supplementary-Entities]■■■■■■■■■")
-        for entity_item in supplementary_entities_unique:
-            print(f"{entity_item.node_type}: {entity_item.content}")
-        print("■■■■■■■■■[Conversation-Entities]■■■■■■■■■")
-        for entity_item in conversation_entities_unique:
-            print(f"{entity_item.node_type}: {entity_item.content}")
+        # for entity_item in supplementary_entities_unique:
+        #     print(f"{entity_item.node_type}: {entity_item.content}")
+        print(f"Load total {len(supplementary_entities_unique)} entities")
 
-        return supplementary_entities_unique, conversation_entities_unique
+        return supplementary_entities_unique
     except Exception as e:
         print("🔥 services/graph: [get_supplementary_entities] failed 🔥", e)
         return []
+
+
+async def get_user_entities(core_subjects: list, user_graph: nx.Graph):
+    try:
+        user_entities = []
+        for core_subject in core_subjects:
+            core_user_entity = await get_closest_user_entities(
+                core_subject["keyword"], user_graph
+            )
+            nearest_user_event_entities = await get_closest_information_entities(
+                entity_name=core_user_entity, user_graph=user_graph
+            )
+            user_entities.extend(nearest_user_event_entities)
+
+        user_entities_unique = remove_duplicates_entity_by_content(user_entities)
+
+        print("■■■■■■■■■[User-Entities]■■■■■■■■■")
+        # for entity_item in user_entities_unique:
+        #     print(f"{entity_item.node_type}: {entity_item.content}")
+        print(f"Load total {len(user_entities_unique)} entities")
+
+        return user_entities_unique
+    except Exception as e:
+        print("🔥 services/graph: [get_user_entities] failed 🔥", e)
+        return []
+
+
+async def get_next_question_topic(user_entity: str, sessionID: str):
+    try:
+        if len(user_entity) == 0:
+            return Neo4jNode(
+                node_label=[], node_type="", name="", content="", node_id=""
+            )
+        neo4j_entity = await get_closest_entities(subject=user_entity)
+        neo4j_topic_list = await get_neo4j_topic_list(sessionID=sessionID)
+
+        relevant_topic = await find_most_dense_neighbor_entity(
+            entity_name=neo4j_entity, topic_list=neo4j_topic_list
+        )
+
+        await add_topic_list(
+            sessionID=sessionID, topic_neo4j=relevant_topic.name, topic_user=user_entity
+        )
+
+        print("■■■■■■■■■[Next-Question-Topic]■■■■■■■■■")
+        print(
+            "User-entity: ",
+            user_entity,
+            "Topic-entity: ",
+            neo4j_entity,
+            "Relevent-topic: ",
+            relevant_topic,
+        )
+
+        return relevant_topic
+    except Exception as e:
+        print("🔥 services/graph: [get_next_question_topic] failed 🔥", e)
+        return Neo4jNode(node_label=[], node_type="", name="", content="", node_id="")

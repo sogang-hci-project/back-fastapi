@@ -30,12 +30,15 @@ from src.services.graph import (
     get_closest_user_entities,
     get_core_subjects,
     get_supplementary_entities,
+    get_user_entities,
+    get_next_question_topic,
 )
 from src.utils.neo4j.common import (
     find_shortest_path_between_two_entity,
     find_path_to_nearest_event_entity,
     find_multiple_pathes_between_two_entity,
 )
+from src.utils.networkx import get_most_dense_entity
 
 
 async def conversation_request_graph_response(
@@ -56,21 +59,35 @@ async def conversation_request_graph_response(
     except Exception as e:
         print("🔥 controller/conversation: [conversation/0][pre-translate] failed 🔥", e)
 
-    ## [LOAD GRAPH]
-    user_graph = await get_networkx_graph(sessionID=sessionID)
-    print("■■■■■■■■■[User-Graph-Status]■■■■■■■■■")
-    print(
-        f"Number of user nodes: {len(user_graph.nodes())} Number of user graph: {len(user_graph.edges())}"
-    )
+    ## [GRAPH LOADING]
+
+    try:
+        user_graph = await get_networkx_graph(sessionID=sessionID)
+        print("■■■■■■■■■[User-Graph-Status]■■■■■■■■■")
+        print(
+            f"Number of user nodes: {len(user_graph.nodes())} Number of user graph: {len(user_graph.edges())}"
+        )
+        most_dense_user_entity = await get_most_dense_entity(
+            user_graph=user_graph, sessionID=sessionID
+        )
+        # print(user_graph.nodes())
+    except Exception as e:
+        print("🔥 controller/conversation: [conversation/0][graph-load] failed 🔥", e)
 
     ## [ENTITY EXTRACTION]
 
     try:
+        question_topic = await get_next_question_topic(
+            user_entity=most_dense_user_entity, sessionID=sessionID
+        )
         last_picasso_message = await getLastPicassoMessage(sessionID=sessionID)
         core_subjects = await get_core_subjects(
             sessionID=sessionID, user=user, last_picasso_message=last_picasso_message
         )
-        supplementary_entities, user_entities = await get_supplementary_entities(
+        supplementary_entities = await get_supplementary_entities(
+            core_subjects=core_subjects
+        )
+        user_entities = await get_user_entities(
             core_subjects=core_subjects, user_graph=user_graph
         )
     except Exception as e:
@@ -92,6 +109,7 @@ async def conversation_request_graph_response(
             directive=directive,
             entities=supplementary_entities,
             user_entities=user_entities,
+            next_topic=question_topic,
         )
     except Exception as e:
         print(
