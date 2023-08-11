@@ -40,18 +40,24 @@ async def generate_pedagogic_strategy(sessionID: str, user: str, agent: str):
         directives = replace_entity_to_picasso(directives)
         res = await append_directive(sessionID=sessionID, content=directives)
     except Exception as e:
-        print("🔥 services/conversation: [generate_pedagogic_strategy] failed 🔥", e)
+        print("🔥 services/graph: [generate_pedagogic_strategy] failed 🔥", e)
 
 
 async def get_closest_entities(subject: str):
-    subject_emb = embed_model.get_text_embedding(subject)
-    entity = ""
-    value_flag = 0
+    try:
+        subject_emb = embed_model.get_text_embedding(subject)
+        entity = ""
+        value_flag = 0
 
-    for i, entity_item in enumerate(neo4j_entities):
-        new_value = cosine_similarity(subject_emb, entity_item[1])
-        if new_value > value_flag:
-            value_flag = new_value
-            entity = entity_item[0]
+        for i, entity_item in enumerate(neo4j_entities):
+            new_value = cosine_similarity(subject_emb, entity_item[1])
+            if new_value > value_flag:
+                value_flag = new_value
+                entity = entity_item[0]
 
-    return entity
+        print("■■■■■■■■■[Closest-Entity-to-Keyword]■■■■■■■■■")
+        print(f"Closest entity for '{subject}': {entity}")
+
+        return entity
+    except Exception as e:
+        print("🔥 services/graph: [get_closest_entities] failed 🔥", e)

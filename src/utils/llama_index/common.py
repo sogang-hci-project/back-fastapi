@@ -21,7 +21,7 @@ index = VectorStoreIndex.from_vector_store(
     service_context=service_context,
 )
 
-retriever = VectorIndexRetriever(index=index, similarity_top_k=5)
+retriever = VectorIndexRetriever(index=index, similarity_top_k=3)
 
 
 async def retrieve_relevent_nodes_in_string(text: str):

@@ -12,6 +12,7 @@ from src.utils.openai.initialize import register_openai_variable
 from src.utils.llama_index.chroma import check_chroma_db
 from src.utils.llama_index.common import retrieve_relevent_nodes_in_string
 from src.services.graph import get_closest_entities
+from src.utils.neo4j.common import check_auradb_connection
 
 app = FastAPI()
 
@@ -30,8 +31,7 @@ async def initialize_server():
         await check_redis()
         check_chroma_db()
         load_neo4j_entities()
-        v = await get_closest_entities("Face of the horse")
-        print(v)
+        check_auradb_connection()
     except Exception as e:
         print("🔥 startup: [initialize_server] failed 🔥", e)
 

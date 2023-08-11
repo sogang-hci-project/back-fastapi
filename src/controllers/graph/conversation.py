@@ -12,13 +12,21 @@ from src.utils.redis import (
     appendKoreanDialogue,
     isTimeSpanOver,
     get_last_directive_from_redis,
+    getLastPicassoMessage,
 )
 from src.utils.openai.graph import (
     get_picasso_answer_few_shot_graph,
+    get_picasso_answer_few_shot_graph_using_entity,
     retrieve_subjects,
+    extract_core_subject,
 )
 from src.utils.common import run_task_in_background, replace_entity_to_picasso
 from src.services.graph import generate_pedagogic_strategy, get_closest_entities
+from src.utils.neo4j.common import (
+    find_shortest_path_between_two_entity,
+    find_path_to_nearest_event_entity,
+    find_multiple_pathes_between_two_entity,
+)
 
 
 async def conversation_request_graph_response(
@@ -39,41 +47,78 @@ async def conversation_request_graph_response(
     except Exception as e:
         print("🔥 controller/conversation: [conversation/0][pre-translate] failed 🔥", e)
 
+    ## [ENTITY EXTRACTION]
+
+    try:
+        last_picasso_message = await getLastPicassoMessage(sessionID=sessionID)
+        picasso_core_subjects = []
+        if last_picasso_message != "":
+            new_picasso_subject = await extract_core_subject(
+                sentence=last_picasso_message, attempt_count=0
+            )
+            picasso_core_subjects.extend(new_picasso_subject)
+        user_core_subjects = await extract_core_subject(sentence=user, attempt_count=0)
+        core_subjects = picasso_core_subjects + user_core_subjects
+
+        supplementary_entities = []
+        for core_subject in core_subjects:
+            core_entity_1 = await get_closest_entities(core_subject["keyword"])
+            picasso_related_entities = find_multiple_pathes_between_two_entity(
+                entity_1_name="Pablo_Picasso",
+                entity_2_name=core_entity_1,
+                count=10,
+            )
+            nearest_event_entities = await find_path_to_nearest_event_entity(
+                entity_name=core_entity_1, count=3
+            )
+            supplementary_entities.extend(nearest_event_entities)
+            supplementary_entities.extend(picasso_related_entities)
+    except Exception as e:
+        print(
+            "🔥 controller/conversation: [conversation/0][entity-extraction] failed 🔥",
+            e,
+        )
+
     ## [RESPONSE GENERATION]
 
     try:
         dialogue = await getArrayDialogue(sessionID=sessionID)
-        isOver = await isTimeSpanOver(sessionID=sessionID)
         directive = await get_last_directive_from_redis(sessionID=sessionID)
-        subjects = await retrieve_subjects(sentence=user, attempt_count=0)
-        closest_entities_1 = await get_closest_entities(subjects[0])
-        closest_entities_2 = await get_closest_entities(subjects[1])
-        print(closest_entities_1, closest_entities_2)
 
-        agent = await get_picasso_answer_few_shot_graph(
+        agent = await get_picasso_answer_few_shot_graph_using_entity(
             dialogue=dialogue[:-1],
             attempt_count=0,
             user_message=user,
             directive=directive,
+            entities=supplementary_entities,
         )
-        currentStage = "/conversation/0"
-
-        if isOver:
-            nextStage = "/farewell/0"
-        else:
-            nextStage = "/conversation/0"
     except Exception as e:
         print(
             "🔥 controller/conversation: [conversation/0][response-generation] failed 🔥",
             e,
         )
 
+    ## [STAGE-CALCULATION]
+
+    try:
+        currentStage = "/conversation/0"
+        is_over = await isTimeSpanOver(sessionID=sessionID)
+        if is_over:
+            nextStage = "/farewell/0"
+        else:
+            nextStage = "/conversation/0"
+    except Exception as e:
+        print(
+            "🔥 controller/conversation: [conversation/0][stage-calculation] failed 🔥",
+            e,
+        )
+
     ## [SELF-EVALUATION]
 
     try:
-        run_task_in_background(
-            generate_pedagogic_strategy(sessionID=sessionID, user=user, agent=agent)
-        )
+        # run_task_in_background(
+        #     generate_pedagogic_strategy(sessionID=sessionID, user=user, agent=agent)
+        # )
         await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
 
     except Exception as e:

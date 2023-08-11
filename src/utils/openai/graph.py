@@ -1,7 +1,11 @@
 import openai
 import asyncio
+import json
+from typing import List
 from src.utils.llama_index.common import retrieve_relevent_nodes_in_string
 from src.utils.common import neo4j_entities
+from src.utils.neo4j.common import Neo4jNode
+from src.utils.llama_index.chroma import retreive_node_by_id
 
 
 async def get_student_analysis(
@@ -258,6 +262,7 @@ A Referenced Nodes
         await asyncio.sleep(1)
         return await get_picasso_answer_few_shot_graph(
             dialogue=dialogue,
+            directive=directive,
             attempt_count=attempt_count + 1,
             user_message=user_message,
         )
@@ -267,9 +272,9 @@ async def retrieve_subjects(sentence: str, attempt_count: int):
     try:
         base_instruction = """
             [TASK]
-            Given the user sentence, retreive the two most important subjects in context from the sentence as a list.
+            Given the user sentence, retreive the two most important subject in context from the sentence as a python list.
             [FORMAT]
-            ["entity1", "entity2"]
+            [{"subject": "name"}, {"subject": "name"}]
         """
 
         messages = [
@@ -280,7 +285,7 @@ async def retrieve_subjects(sentence: str, attempt_count: int):
             },
             {
                 "role": "assistant",
-                "content": "[Picasso, Paris]",
+                "content": '[{"subject": "Picasso"}, {"subject": "Paris"}]',
             },
             {
                 "role": "user",
@@ -288,14 +293,16 @@ async def retrieve_subjects(sentence: str, attempt_count: int):
             },
             {
                 "role": "assistant",
-                "content": "[The Frugal Repast, blind man and sighted woman]",
+                "content": '[{"subject": "The Frugal Repast"}, {"subject": "blind man and sighted woman"}]',
             },
+            {"role": "system", "content": base_instruction},
             {"role": "user", "content": sentence},
         ]
 
         completion = await openai.ChatCompletion.acreate(
             model="gpt-3.5-turbo",
             messages=messages,
+            temperature=0,
         )
 
         res = completion["choices"][0]["message"]["content"]
@@ -306,18 +313,198 @@ async def retrieve_subjects(sentence: str, attempt_count: int):
 {res}
               """
         )
-
-        return res
+        res_jsonify = json.loads(res)
+        return [res_jsonify[0]["subject"], res_jsonify[1]["subject"]]
     except Exception as e:
         print(
-            f"🔥 utils/openai/graph: [get_student_analysis] failed {attempt_count + 1} times🔥",
+            f"🔥 openai/graph/retrieve_subjects: [retrieve_subjects] failed {attempt_count + 1} times🔥",
             e,
         )
         if attempt_count + 1 == 3:
-            print("🔥 utils/openai/graph: [get_student_analysis] max error reached🔥")
-            return "[Pablo Picasso, Guernica]"
+            print(
+                "🔥 openai/graph/retrieve_subjects: [retrieve_subjects] max error reached🔥"
+            )
+            return ["Pablo Picasso", "Guernica"]
         await asyncio.sleep(1)
-        return await get_student_analysis(
+        return await retrieve_subjects(
             sentence=sentence,
             attempt_count=attempt_count + 1,
+        )
+
+
+async def extract_core_subject(sentence: str, attempt_count: int):
+    try:
+        base_instruction = """
+            [TASK]
+            Given the user sentence, retreive the up to three core keywords in context from the sentence as a python list.
+            Exclude Pablo Picasso from the keyword.
+            [FORMAT]
+            [{"keyword": "name"}, {"keyword": "name"}, {"keyword": "name"}]
+        """
+
+        messages = [
+            {"role": "system", "content": base_instruction},
+            {
+                "role": "user",
+                "content": "Picasso made his first trip to Paris, then the art capital of Europe, in 1900.",
+            },
+            {
+                "role": "assistant",
+                "content": '[{"keyword": "Paris"}, {"keyword": "trip"}, {"keyword": "Europe"}]',
+            },
+            {
+                "role": "user",
+                "content": "The same mood pervades the well-known etching The Frugal Repast (1904), which depicts a blind man and a sighted woman, both emaciated, seated at a nearly bare table.",
+            },
+            {
+                "role": "assistant",
+                "content": '[{"keyword": "The Frugal Repast"}, {"keyword": "blind man"}, {"keyword": "sighted woman"}]',
+            },
+            {
+                "role": "user",
+                "content": "I'm feeling very cold and distracted, but I don't feel like I'm in pain.",
+            },
+            {
+                "role": "assistant",
+                "content": '[{"keyword": "cold"}, {"keyword": "distract"}, {"keyword": "pain"}]',
+            },
+            {"role": "system", "content": base_instruction},
+            {"role": "user", "content": sentence},
+        ]
+
+        completion = await openai.ChatCompletion.acreate(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            temperature=0,
+        )
+
+        res = completion["choices"][0]["message"]["content"]
+        print(res)
+
+        res_jsonify = json.loads(res)
+        print("■■■■■■■■■[Retrieved-Core-Subject]■■■■■■■■■")
+        print(res_jsonify)
+        return res_jsonify
+    except Exception as e:
+        print(
+            f"🔥 openai/graph/extract_core_subject: [extract_core_subject] failed {attempt_count + 1} times🔥",
+            e,
+        )
+        if attempt_count + 1 == 3:
+            print(
+                "🔥 openai/graph/extract_core_subject: [extract_core_subject] max error reached🔥"
+            )
+            return ["Guernica"]
+        await asyncio.sleep(1)
+        return await extract_core_subject(
+            sentence=sentence,
+            attempt_count=attempt_count + 1,
+        )
+
+
+def transform_entity_to_text(entities: List[Neo4jNode]):
+    try:
+        event_list = ""
+        fact_list = ""
+        idea_list = ""
+
+        for entity_item in entities:
+            if entity_item.node_type == "EVENT":
+                event_list += "-" + entity_item.content + "\n"
+                # event_list += "Event: \n" + entity_item.content + "\n"
+                # event_list += (
+                #     "Detail: \n" + retreive_node_by_id(entity_item.id) + "\n\n"
+                # )
+            elif entity_item.node_type == "FACT":
+                fact_list += "-" + entity_item.content + "\n"
+                # fact_list += "Fact:\n " + entity_item.content + "\n"
+                # fact_list += "Detail: \n" + retreive_node_by_id(entity_item.id) + "\n\n"
+            elif entity_item.node_type == "IDEA":
+                idea_list += "-" + entity_item.content + "\n"
+                # idea_list += "Idea: \n" + entity_item.content + "\n"
+                # idea_list += "Detail: \n" + retreive_node_by_id(entity_item.id) + "\n\n"
+
+        return event_list, fact_list, idea_list
+    except Exception as e:
+        print(
+            f"🔥 utils/openai/graph: [transform_entity_to_text] failedssssss🔥",
+            e,
+        )
+
+
+async def get_picasso_answer_few_shot_graph_using_entity(
+    dialogue: list,
+    directive: str,
+    user_message: str,
+    attempt_count: int,
+    entities: List[Neo4jNode],
+):
+    try:
+        (
+            event_list,
+            fact_list,
+            ldea_list,
+        ) = transform_entity_to_text(entities=entities)
+
+        query_base = (
+            "While looking at the painting Guernica by Pablo Picasso, " + user_message
+        )
+        nodes = await retrieve_relevent_nodes_in_string(query_base)
+
+        instruction = f"""
+[TASK]
+You are now acting as the Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica". 
+Make a reply to the user message with following instructions.
+- Make retrospective narrration as Pablo Picasso based on the [PICASSO MEMORY].
+- Reference on following [DATA] for informations.
+- Keep the dialogue engaging by asking a question to keep the conversation going.
+
+[DATA]
+{nodes}
+
+[PICASSO MEMORY]
+{event_list}
+
+[RULE]
+- Do not exceed more than two sentence.
+
+[GOAL]
+Follow [TASK] and generate a reply as a Pablo Picasso.
+        """
+
+        print(instruction)
+
+        messages = (
+            sample_dialogue_for_dev
+            + dialogue
+            + [{"role": "system", "content": instruction}]
+            + [{"role": "user", "content": user_message}]
+        )
+
+        completion = await openai.ChatCompletion.acreate(
+            # model="gpt-4",
+            model="gpt-3.5-turbo",
+            messages=messages,
+            max_tokens=100,
+            temperature=0,
+        )
+
+        return completion["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(
+            f"🔥 utils/openai/graph: [get_picasso_answer_few_shot_graph_using_entity] failed {attempt_count + 1} time   s🔥",
+            e,
+        )
+        if attempt_count + 1 == 3:
+            print(
+                "🔥 utils/openai/graph: [get_picasso_answer_few_shot_graph_using_entity] max error reache   d🔥"
+            )
+            return "I'm sorry can you tell me once more?"
+        await asyncio.sleep(1)
+        return await get_picasso_answer_few_shot_graph_using_entity(
+            dialogue=dialogue,
+            directive=directive,
+            attempt_count=attempt_count + 1,
+            user_message=user_message,
+            entities=entities,
         )
