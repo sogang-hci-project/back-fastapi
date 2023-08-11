@@ -4,6 +4,8 @@ from src.utils.redis import (
     append_directive,
     append_analysis,
     get_last_analysis_from_redis,
+    save_networkx_graph,
+    get_networkx_graph,
 )
 from src.utils.openai.graph import (
     get_student_analysis,
@@ -14,6 +16,7 @@ from src.utils.common import (
     replace_entity_to_picasso,
     cosine_similarity,
 )
+from src.utils.openai.user_graph import extract_entity_from_user_message
 from src.utils.langchain.common import embed_model
 
 
@@ -61,3 +64,37 @@ async def get_closest_entities(subject: str):
         return entity
     except Exception as e:
         print("🔥 services/graph: [get_closest_entities] failed 🔥", e)
+
+
+async def update_user_graph(user: str, last_picasso_message: str, sessionID: str):
+    try:
+        entities = await extract_entity_from_user_message(
+            user_message=user, assistant_message=last_picasso_message, attempt_count=0
+        )
+        user_graph = await get_networkx_graph(sessionID=sessionID)
+        entity_for_print_list = ""
+        for entity_item in entities:
+            entity_item_embedding = embed_model.get_text_embedding(entity_item.content)
+            user_graph.add_node(
+                entity_item.id,
+                content=entity_item.content,
+                label=entity_item.type,
+                embedding=entity_item_embedding,
+            )
+            entity_for_print_list += (
+                f"LABEL:{entity_item.type}, CONTENT:{entity_item.content}\n"
+            )
+        for entity_item in entities:
+            if len(entity_item.relation) == 2:
+                node_one, node_two = entity_item.relation
+                node_one_embed = user_graph.nodes[node_one]["embedding"]
+                node_two_embed = user_graph.nodes[node_two]["embedding"]
+                if node_one_embed and node_two_embed:
+                    distance = cosine_similarity(node_one_embed, node_two_embed)
+                    user_graph.add_edge(node_one, node_two, distance=distance)
+        await save_networkx_graph(sessionID=sessionID, user_graph=user_graph)
+
+        print("■■■■■■■■■[User-Graph-Update]■■■■■■■■■")
+        print(entity_for_print_list)
+    except Exception as e:
+        print("🔥 services/graph: [update_user_graph] failed 🔥", e)

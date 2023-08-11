@@ -379,7 +379,6 @@ async def extract_core_subject(sentence: str, attempt_count: int):
         )
 
         res = completion["choices"][0]["message"]["content"]
-        print(res)
 
         res_jsonify = json.loads(res)
         print("■■■■■■■■■[Retrieved-Core-Subject]■■■■■■■■■")

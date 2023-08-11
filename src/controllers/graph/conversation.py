@@ -13,6 +13,8 @@ from src.utils.redis import (
     isTimeSpanOver,
     get_last_directive_from_redis,
     getLastPicassoMessage,
+    save_networkx_graph,
+    get_networkx_graph,
 )
 from src.utils.openai.graph import (
     get_picasso_answer_few_shot_graph,
@@ -21,7 +23,11 @@ from src.utils.openai.graph import (
     extract_core_subject,
 )
 from src.utils.common import run_task_in_background, replace_entity_to_picasso
-from src.services.graph import generate_pedagogic_strategy, get_closest_entities
+from src.services.graph import (
+    generate_pedagogic_strategy,
+    get_closest_entities,
+    update_user_graph,
+)
 from src.utils.neo4j.common import (
     find_shortest_path_between_two_entity,
     find_path_to_nearest_event_entity,
@@ -47,11 +53,19 @@ async def conversation_request_graph_response(
     except Exception as e:
         print("🔥 controller/conversation: [conversation/0][pre-translate] failed 🔥", e)
 
+    ## [GRAPH UPDATE]
+
+    user_graph = await get_networkx_graph(sessionID=sessionID)
+    print("------------GRAPH NODES------------")
+    print(list(user_graph.nodes()))
+    print("------------GRAPH RELATIONS------------")
+    print(list(user_graph.edges()))
+
     ## [ENTITY EXTRACTION]
 
     try:
-        last_picasso_message = await getLastPicassoMessage(sessionID=sessionID)
         picasso_core_subjects = []
+        last_picasso_message = await getLastPicassoMessage(sessionID=sessionID)
         if last_picasso_message != "":
             new_picasso_subject = await extract_core_subject(
                 sentence=last_picasso_message, attempt_count=0
@@ -62,14 +76,14 @@ async def conversation_request_graph_response(
 
         supplementary_entities = []
         for core_subject in core_subjects:
-            core_entity_1 = await get_closest_entities(core_subject["keyword"])
+            core_entity = await get_closest_entities(core_subject["keyword"])
             picasso_related_entities = find_multiple_pathes_between_two_entity(
                 entity_1_name="Pablo_Picasso",
-                entity_2_name=core_entity_1,
+                entity_2_name=core_entity,
                 count=10,
             )
             nearest_event_entities = await find_path_to_nearest_event_entity(
-                entity_name=core_entity_1, count=3
+                entity_name=core_entity, count=3
             )
             supplementary_entities.extend(nearest_event_entities)
             supplementary_entities.extend(picasso_related_entities)
@@ -116,6 +130,13 @@ async def conversation_request_graph_response(
     ## [SELF-EVALUATION]
 
     try:
+        run_task_in_background(
+            update_user_graph(
+                user=user,
+                last_picasso_message=last_picasso_message,
+                sessionID=sessionID,
+            )
+        )
         # run_task_in_background(
         #     generate_pedagogic_strategy(sessionID=sessionID, user=user, agent=agent)
         # )

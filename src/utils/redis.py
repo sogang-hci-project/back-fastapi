@@ -1,5 +1,7 @@
 import aioredis
 import json
+import networkx as nx
+import json
 from src.utils.common import throw_exception
 from fastapi import HTTPException
 from datetime import datetime
@@ -306,3 +308,30 @@ async def get_last_analysis_from_redis(
             status_code=500,
             detail="utils/redis: [get_last_directive_from_redis] failed",
         )
+
+
+async def save_networkx_graph(sessionID: str, user_graph: nx.Graph):
+    try:
+        graph_json = nx.readwrite.json_graph.node_link_data(user_graph)
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+        data["graph"] = graph_json
+        req = json.dumps(data)
+        await redisEndPoint.set(f"sess:{sessionID}", req)
+    except Exception as e:
+        print("🔥 utils/redis: [save_networkx_graph] failed 🔥", e)
+
+
+async def get_networkx_graph(sessionID: str):
+    try:
+        res = await redisEndPoint.get(f"sess:{sessionID}")
+        data = json.loads(res)
+        user_graph = None
+        if "graph" in data:
+            user_graph = nx.json_graph.node_link_graph(data["graph"])
+        else:
+            user_graph = nx.Graph()
+        return user_graph
+    except Exception as e:
+        print("🔥 utils/redis: [get_networkx_graph] failed 🔥", e)
+        return nx.Graph()
