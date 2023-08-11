@@ -24,7 +24,10 @@ from src.utils.neo4j.common import (
 )
 from src.utils.openai.user_graph import extract_entity_from_user_message
 from src.utils.langchain.common import embed_model
-from src.utils.networkx import get_closest_user_entities
+from src.utils.networkx import (
+    get_closest_user_entities,
+    get_closest_information_entities,
+)
 
 
 async def generate_pedagogic_strategy(sessionID: str, user: str, agent: str):
@@ -128,9 +131,24 @@ async def get_core_subjects(sessionID: str, user: str, last_picasso_message: str
         return []
 
 
+def remove_duplicates_entity_by_content(input_array):
+    property_values_seen = set()
+    result = []
+
+    for item in input_array:
+        current_property_value = item.content
+
+        if current_property_value not in property_values_seen:
+            result.append(item)
+            property_values_seen.add(current_property_value)
+
+    return result
+
+
 async def get_supplementary_entities(core_subjects: list, user_graph: nx.Graph):
     try:
         supplementary_entities = []
+        conversation_entities = []
         for core_subject in core_subjects:
             core_user_entity = await get_closest_user_entities(
                 core_subject["keyword"], user_graph
@@ -144,14 +162,28 @@ async def get_supplementary_entities(core_subjects: list, user_graph: nx.Graph):
             nearest_event_entities = await find_path_to_nearest_event_entity(
                 entity_name=core_entity, count=3
             )
+            nearest_user_event_entities = await get_closest_information_entities(
+                entity_name=core_user_entity, user_graph=user_graph
+            )
             supplementary_entities.extend(nearest_event_entities)
             supplementary_entities.extend(picasso_related_entities)
+            conversation_entities.extend(nearest_user_event_entities)
+
+        supplementary_entities_unique = remove_duplicates_entity_by_content(
+            supplementary_entities
+        )
+        conversation_entities_unique = remove_duplicates_entity_by_content(
+            conversation_entities
+        )
 
         print("■■■■■■■■■[Supplementary-Entities]■■■■■■■■■")
-        for entity_item in supplementary_entities:
+        for entity_item in supplementary_entities_unique:
+            print(f"{entity_item.node_type}: {entity_item.content}")
+        print("■■■■■■■■■[Conversation-Entities]■■■■■■■■■")
+        for entity_item in conversation_entities_unique:
             print(f"{entity_item.node_type}: {entity_item.content}")
 
-        return supplementary_entities
+        return supplementary_entities_unique, conversation_entities_unique
     except Exception as e:
         print("🔥 services/graph: [get_supplementary_entities] failed 🔥", e)
         return []

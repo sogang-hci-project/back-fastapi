@@ -70,7 +70,7 @@ async def conversation_request_graph_response(
         core_subjects = await get_core_subjects(
             sessionID=sessionID, user=user, last_picasso_message=last_picasso_message
         )
-        supplementary_entities = await get_supplementary_entities(
+        supplementary_entities, user_entities = await get_supplementary_entities(
             core_subjects=core_subjects, user_graph=user_graph
         )
     except Exception as e:
@@ -91,6 +91,7 @@ async def conversation_request_graph_response(
             user_message=user,
             directive=directive,
             entities=supplementary_entities,
+            user_entities=user_entities,
         )
     except Exception as e:
         print(

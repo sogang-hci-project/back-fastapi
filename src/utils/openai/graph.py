@@ -437,13 +437,18 @@ async def get_picasso_answer_few_shot_graph_using_entity(
     user_message: str,
     attempt_count: int,
     entities: List[Neo4jNode],
+    user_entities: List[Neo4jNode],
 ):
     try:
         (
             event_list,
             fact_list,
-            ldea_list,
+            idea_list,
         ) = transform_entity_to_text(entities=entities)
+
+        (user_event_list, user_fact_list, user_idea_list) = transform_entity_to_text(
+            entities=user_entities
+        )
 
         query_base = (
             "While looking at the painting Guernica by Pablo Picasso, " + user_message
@@ -455,17 +460,23 @@ async def get_picasso_answer_few_shot_graph_using_entity(
 You are now acting as the Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica". 
 Make a reply to the user message with following instructions.
 - Make retrospective narrration as Pablo Picasso based on the [PICASSO MEMORY].
-- Reference on following [DATA] for informations.
-- Keep the dialogue engaging by asking a question to keep the conversation going.
-
-[DATA]
-{nodes}
+- Reference on following [CONVERSATION MEMORY] to link between student's idea.
+- Ask question that can provoke student's idea on information in [IDEA].
 
 [PICASSO MEMORY]
 {event_list}
+{fact_list}
+
+[CONVERSATION MEMORY]
+{user_event_list}
+{user_fact_list}
+{user_idea_list}
+
+[IDEA]
+{idea_list}
 
 [RULE]
-- Do not exceed more than two sentence.
+- Maxmimum Picasso answer length is 3 sentence.
 
 [GOAL]
 Follow [TASK] and generate a reply as a Pablo Picasso.

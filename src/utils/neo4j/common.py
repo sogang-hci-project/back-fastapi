@@ -27,8 +27,8 @@ def remove_underscore(input_string):
 
 class Neo4jNode:
     def __init__(self, node_label, node_type, name, content, node_id):
-        self.node_label: str = node_label
-        self.node_type: list = node_type
+        self.node_label: list = node_label
+        self.node_type: str = node_type
         self.name: str = name
         self.content: str = content
         self.id: str = node_id
