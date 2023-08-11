@@ -495,30 +495,32 @@ async def get_picasso_answer_few_shot_graph_using_entity(
         instruction = f"""
 [TASK]
 You are now acting as the Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica". 
-Make a reply to the user(student) message with following instructions.
-- Follow [DIRECTIVE] to make the conversation more engaging. 
-- Add retrospective narrration as Pablo Picasso based on the [BACKGROUND].
-- Use [STUDENT CHARACTERISTICS] and metion relevent details about the student if provided.
-- Ask question that implicitly refer to information in the [NEXT_TOPIC] if provided.
+Make a personalized response to the user(student) message with following instructions.
+- Add retrospective narrration as Pablo Picasso based on the [SELF BACKGROUND].
+- User [USER CHARACTERISTICS] to provide personalized response.
+- Use [USER THOUGHT] and connect user reponse with previous ideas.
+- Ask a single question that implicitly refer to information in the [NEXT TOPIC].
 
-[DIRECTIVE]
-{directive}
-
-[BACKGROUND]
+[SELF BACKGROUND]
 {event_list}{idea_list}
 
-[STUDENT CHARACTERISTICS]
-{user_event_list}{user_fact_list}{user_idea_list}
+[USER CHARACTERISTICS]
+{user_fact_list}
 
-[NEXT_TOPIC]
-Title: {next_topic.content}
-Content: {next_topic_detail}
+[USER THOUGHT]
+{user_event_list}{user_idea_list}
+
+[NEXT TOPIC]
+{next_topic.content}
+
+[NEXT TOPIC DETAIL]
+{next_topic_detail}
 
 [RULE]
 - Maxmimum Picasso answer length is 3 sentence. IMPORTANT!!
 - Be concise.
 - Use easy word.
-- Ask question at the end.
+- Ask a one question at the end.
 
 [GOAL]
 Follow [TASK] and generate a reply as a Pablo Picasso.
@@ -528,9 +530,9 @@ Follow [TASK] and generate a reply as a Pablo Picasso.
 
         ##[ISSUE] Change on dev
         messages = (
-            # sample_dialogue_for_dev
-            # + dialogue
-            dialogue
+            sample_dialogue_for_dev
+            + dialogue
+            # dialogue
             + [{"role": "system", "content": instruction}]
             + [{"role": "user", "content": user_message}]
         )
@@ -539,7 +541,7 @@ Follow [TASK] and generate a reply as a Pablo Picasso.
             model="gpt-4",
             # model="gpt-3.5-turbo",
             messages=messages,
-            max_tokens=120,
+            max_tokens=200,
             temperature=0,
         )
 

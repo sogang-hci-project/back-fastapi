@@ -53,9 +53,11 @@ async def conversation_request_graph_response(
     try:
         if lang == "ko":
             await appendKoreanDialogue(sessionID=sessionID, content=user, role="user")
-            user = await server_translate(user, source_lang=lang)
+            translate_user = await server_translate(user, source_lang=lang)
+        else:
+            translate_user = user
 
-        await appendDialogue(sessionID=sessionID, content=user, role="user")
+        await appendDialogue(sessionID=sessionID, content=translate_user, role="user")
     except Exception as e:
         print("🔥 controller/conversation: [conversation/0][pre-translate] failed 🔥", e)
 
@@ -82,7 +84,9 @@ async def conversation_request_graph_response(
         )
         last_picasso_message = await getLastPicassoMessage(sessionID=sessionID)
         core_subjects = await get_core_subjects(
-            sessionID=sessionID, user=user, last_picasso_message=last_picasso_message
+            sessionID=sessionID,
+            user=translate_user,
+            last_picasso_message=last_picasso_message,
         )
         supplementary_entities = await get_supplementary_entities(
             core_subjects=core_subjects
@@ -105,7 +109,7 @@ async def conversation_request_graph_response(
         agent = await get_picasso_answer_few_shot_graph_using_entity(
             dialogue=dialogue[:-1],
             attempt_count=0,
-            user_message=user,
+            user_message=translate_user,
             directive=directive,
             entities=supplementary_entities,
             user_entities=user_entities,
@@ -137,14 +141,16 @@ async def conversation_request_graph_response(
     try:
         run_task_in_background(
             update_user_graph(
-                user=user,
+                user=translate_user,
                 last_picasso_message=last_picasso_message,
                 sessionID=sessionID,
             )
         )
-        run_task_in_background(
-            generate_pedagogic_strategy(sessionID=sessionID, user=user, agent=agent)
-        )
+        # run_task_in_background(
+        #     generate_pedagogic_strategy(
+        #         sessionID=sessionID, user=translate_user, agent=agent
+        #     )
+        # )
         await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
 
     except Exception as e:

@@ -15,6 +15,7 @@ from src.utils.redis import (
 )
 from src.utils.openai.common import getPicassoAnswerFewShot, get_GPT_translation
 from src.services.graph import update_user_graph
+from src.utils.common import run_task_in_background
 
 message_by_stage = [
     {
@@ -50,7 +51,7 @@ async def greeting_request_graph_response(
     ## [PRE-TRANSLATE]
 
     try:
-        if lang == "ko" and user != "hello":
+        if lang == "ko" and user != "Hello":
             await appendKoreanDialogue(sessionID=sessionID, content=user, role="user")
             user = await get_GPT_translation(user, source_lang=lang, attempt_count=0)
         await appendDialogue(sessionID=sessionID, content=user, role="user")
@@ -100,10 +101,12 @@ async def greeting_request_graph_response(
     ## [SELF-EVALUATION]
 
     try:
-        await update_user_graph(
-            user=user,
-            last_picasso_message=agent,
-            sessionID=sessionID,
+        run_task_in_background(
+            update_user_graph(
+                user=user,
+                last_picasso_message=agent,
+                sessionID=sessionID,
+            )
         )
         await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
 
