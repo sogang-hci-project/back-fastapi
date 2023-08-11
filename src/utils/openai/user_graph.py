@@ -10,17 +10,16 @@ from src.utils.llama_index.chroma import retreive_node_by_id
 
 
 class UserGraphEntity:
-    def __init__(self, id: str, type: str, content: str, relation: list):
-        self.id = id
+    def __init__(self, type: str, content: str, relation: list):
         self.type = type
         self.content = content
         self.relation = relation
 
     def __str__(self):
-        return f"<UserGraphEntity Id: {self.id}, Type: {self.type}, Content: {self.content}, Relation: {self.relation}>"
+        return f"<UserGraphEntity Type: {self.type}, Content: {self.content}, Relation: {self.relation}>"
 
     def __repr__(self):
-        return f"<UserGraphEntity Id: {self.id}, Type: {self.type}, Content: {self.content}, Relation: {self.relation}>\n"
+        return f"<UserGraphEntity Type: {self.type}, Content: {self.content}, Relation: {self.relation}>\n"
 
 
 async def extract_entity_from_user_message(
@@ -36,6 +35,7 @@ async def extract_entity_from_user_message(
             - EVENT: Episode or event between the Student and the Pablo Picasso.
             - IDEA: Projected opinion or idea by the Student.
             The dialogue is about the painting Guernica. 
+            Try to return multiple information.
             Return in following [FORMAT], DO NOT OMIT
             
             [FORMAT]
@@ -83,14 +83,12 @@ async def extract_entity_from_user_message(
         return_list = []
 
         for entity_item in res_json:
-            entity_item_id = str(uuid.uuid4())
             entity_item_type = entity_item["type"] if "type" in entity_item else "MISC"
             entity_item_content = (
                 entity_item["content"] if "content" in entity_item else "none"
             )
             return_list.append(
                 UserGraphEntity(
-                    id=entity_item_id,
                     type=entity_item_type,
                     content=entity_item_content,
                     relation=[],
@@ -100,16 +98,17 @@ async def extract_entity_from_user_message(
                 entity_item["entities"] if "entities" in entity_item else []
             )
             for sub_entity_item in related_entities:
-                sub_entity_item_id = str(uuid.uuid4())
                 sub_entity_item_type = "ENTITY"
                 sub_entity_item_content = (
                     sub_entity_item["name"] if "name" in sub_entity_item else "none"
                 )
-                sub_entity_item_relations = [entity_item_id, sub_entity_item_id]
+                sub_entity_item_relations = [
+                    entity_item_content,
+                    sub_entity_item_content,
+                ]
 
                 return_list.append(
                     UserGraphEntity(
-                        id=sub_entity_item_id,
                         type=sub_entity_item_type,
                         content=sub_entity_item_content,
                         relation=sub_entity_item_relations,

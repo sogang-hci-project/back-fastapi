@@ -381,8 +381,8 @@ async def extract_core_subject(sentence: str, attempt_count: int):
         res = completion["choices"][0]["message"]["content"]
 
         res_jsonify = json.loads(res)
-        print("■■■■■■■■■[Retrieved-Core-Subject]■■■■■■■■■")
-        print(res_jsonify)
+        # print("■■■■■■■■■[Retrieved-Core-Subject]■■■■■■■■■")
+        # print(res_jsonify)
         return res_jsonify
     except Exception as e:
         print(

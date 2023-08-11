@@ -163,8 +163,8 @@ def find_multiple_pathes_between_two_entity(
             dict_node_item = extract_node(node_item)
             extracted_informations.append(dict_node_item)
 
-        print("■■■■■■■■■[Multiple-Path-Graph-Extracted]■■■■■■■■■")
-        print("nodes count: ", len(extracted_informations))
+        # print("■■■■■■■■■[Multiple-Path-Graph-Extracted]■■■■■■■■■")
+        # print("nodes count: ", len(extracted_informations))
 
         return extracted_informations
     except Exception as e:
@@ -199,8 +199,8 @@ async def find_path_to_nearest_event_entity(entity_name: str, count: int):
             dict_node_item = extract_node(node_item)
             extracted_informations.append(dict_node_item)
 
-        print("■■■■■■■■■[Nearest-Event-Extracted]■■■■■■■■■")
-        print("nodes count: ", len(extracted_informations))
+        # print("■■■■■■■■■[Nearest-Event-Extracted]■■■■■■■■■")
+        # print("nodes count: ", len(extracted_informations))
 
         return extracted_informations
     except Exception as e:

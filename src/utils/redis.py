@@ -322,7 +322,7 @@ async def save_networkx_graph(sessionID: str, user_graph: nx.Graph):
         print("🔥 utils/redis: [save_networkx_graph] failed 🔥", e)
 
 
-async def get_networkx_graph(sessionID: str):
+async def get_networkx_graph(sessionID: str) -> nx.Graph:
     try:
         res = await redisEndPoint.get(f"sess:{sessionID}")
         data = json.loads(res)

@@ -27,6 +27,9 @@ from src.services.graph import (
     generate_pedagogic_strategy,
     get_closest_entities,
     update_user_graph,
+    get_closest_user_entities,
+    get_core_subjects,
+    get_supplementary_entities,
 )
 from src.utils.neo4j.common import (
     find_shortest_path_between_two_entity,
@@ -53,40 +56,23 @@ async def conversation_request_graph_response(
     except Exception as e:
         print("🔥 controller/conversation: [conversation/0][pre-translate] failed 🔥", e)
 
-    ## [GRAPH UPDATE]
-
+    ## [LOAD GRAPH]
     user_graph = await get_networkx_graph(sessionID=sessionID)
-    print("------------GRAPH NODES------------")
-    print(list(user_graph.nodes()))
-    print("------------GRAPH RELATIONS------------")
-    print(list(user_graph.edges()))
+    print("■■■■■■■■■[User-Graph-Status]■■■■■■■■■")
+    print(
+        f"Number of user nodes: {len(user_graph.nodes())} Number of user graph: {len(user_graph.edges())}"
+    )
 
     ## [ENTITY EXTRACTION]
 
     try:
-        picasso_core_subjects = []
         last_picasso_message = await getLastPicassoMessage(sessionID=sessionID)
-        if last_picasso_message != "":
-            new_picasso_subject = await extract_core_subject(
-                sentence=last_picasso_message, attempt_count=0
-            )
-            picasso_core_subjects.extend(new_picasso_subject)
-        user_core_subjects = await extract_core_subject(sentence=user, attempt_count=0)
-        core_subjects = picasso_core_subjects + user_core_subjects
-
-        supplementary_entities = []
-        for core_subject in core_subjects:
-            core_entity = await get_closest_entities(core_subject["keyword"])
-            picasso_related_entities = find_multiple_pathes_between_two_entity(
-                entity_1_name="Pablo_Picasso",
-                entity_2_name=core_entity,
-                count=10,
-            )
-            nearest_event_entities = await find_path_to_nearest_event_entity(
-                entity_name=core_entity, count=3
-            )
-            supplementary_entities.extend(nearest_event_entities)
-            supplementary_entities.extend(picasso_related_entities)
+        core_subjects = await get_core_subjects(
+            sessionID=sessionID, user=user, last_picasso_message=last_picasso_message
+        )
+        supplementary_entities = await get_supplementary_entities(
+            core_subjects=core_subjects, user_graph=user_graph
+        )
     except Exception as e:
         print(
             "🔥 controller/conversation: [conversation/0][entity-extraction] failed 🔥",
