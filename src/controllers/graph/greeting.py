@@ -11,8 +11,10 @@ from src.utils.redis import (
     getStringDialogue,
     appendKoreanDialogue,
     isTimeSpanOver,
+    get_networkx_graph,
 )
 from src.utils.openai.common import getPicassoAnswerFewShot, get_GPT_translation
+from src.services.graph import update_user_graph
 
 message_by_stage = [
     {
@@ -45,63 +47,85 @@ async def greeting_request_graph_response(
     currentStage = ""
     nextStage = ""
 
+    ## [PRE-TRANSLATE]
+
     try:
-        if lang == "ko":
+        if lang == "ko" and user != "hello":
             await appendKoreanDialogue(sessionID=sessionID, content=user, role="user")
             user = await get_GPT_translation(user, source_lang=lang, attempt_count=0)
         await appendDialogue(sessionID=sessionID, content=user, role="user")
     except Exception as e:
-        print("🔥 controller/greeting: [greeting/0][pre-translate] failed 🔥", e)
+        print("🔥 controller/greeting: [pre-translate] failed 🔥", e)
 
-    if stage == 0:
-        try:
+    ## [ENTITY EXTRACTION]
+
+    try:
+        user_graph = await get_networkx_graph(sessionID=sessionID)
+        print("■■■■■■■■■[User-Graph-Status]■■■■■■■■■")
+        print(
+            f"Number of user nodes: {len(user_graph.nodes())} Number of user graph: {len(user_graph.edges())}"
+        )
+    except:
+        print(
+            "🔥 controller/greeting: [entity-extraction] failed 🔥",
+            e,
+        )
+
+    ## [RESPONSE-GENERATION]
+
+    try:
+        if stage == 0:
             agent = message_by_stage[stage][lang]
             currentStage = "/greeting/0"
             nextStage = "/greeting/1"
-        except Exception as e:
-            print("🔥 controller/greeting: [greeting/0] failed 🔥", e)
-    elif stage == 1:
-        try:
+        elif stage == 1:
             agent = message_by_stage[stage][lang]
             currentStage = "/greeting/1"
             nextStage = "/greeting/2"
-        except Exception as e:
-            print("🔥 controller/greeting: [greeting/1] failed 🔥", e)
-    elif stage == 2:
-        try:
+        elif stage == 2:
             agent = message_by_stage[stage][lang]
             currentStage = "/greeting/2"
             nextStage = "/greeting/3"
-        except Exception as e:
-            print("🔥 controller/greeting: [greeting/2] failed 🔥", e)
-    elif stage == 3:
-        try:
+        elif stage == 3:
             agent = message_by_stage[stage][lang]
             currentStage = "/greeting/3"
             nextStage = "/greeting/4"
-        except Exception as e:
-            print("🔥 controller/greeting: [greeting/3] failed 🔥", e)
-    elif stage == 4:
-        try:
+        elif stage == 4:
             agent = message_by_stage[stage][lang]
             currentStage = "/greeting/4"
             nextStage = "/conversation/0"
-        except Exception as e:
-            print("🔥 controller/greeting: [greeting/4] failed 🔥", e)
+    except Exception as e:
+        print("🔥 controller/greeting: [response-generation] failed 🔥", e)
+
+    ## [SELF-EVALUATION]
+
+    try:
+        await update_user_graph(
+            user=user,
+            last_picasso_message=agent,
+            sessionID=sessionID,
+        )
+        await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
+
+    except Exception as e:
+        print(
+            "🔥 controller/conversation: [conversation/0][self-evaluation] failed 🔥", e
+        )
+
+    ## [POST TRANSLATE]
 
     try:
         await appendDialogue(
             sessionID=sessionID, content=message_by_stage[stage]["en"], role="assistant"
         )
         if lang == "ko":
-            user = await get_GPT_translation(user, source_lang=lang, attempt_count=0)
             await appendKoreanDialogue(
                 sessionID=sessionID,
                 content=message_by_stage[stage]["ko"],
                 role="assistant",
             )
     except Exception as e:
-        print("🔥 controller/greeting: [greeting/0][post-translate] failed 🔥", e)
+        print("🔥 controller/greeting: [post-translate] failed 🔥", e)
 
     return {
         "data": {

@@ -18,6 +18,8 @@ def check_chroma_db():
 
 def retreive_node_by_id(id: str):
     try:
+        if id == "" or id == None:
+            return ""
         retrieved_node = collection.get(ids=[id])
         retrieved_node_text = retrieved_node["documents"][0]
 

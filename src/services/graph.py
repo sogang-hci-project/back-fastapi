@@ -75,7 +75,14 @@ async def get_closest_entities(subject: str):
         # print("■■■■■■■■■[Closest-Entity-to-Keyword]■■■■■■■■■")
         # print(f"Closest entity for '{subject}': {entity}")
 
-        return entity
+        if entity == "the_bull":
+            fixed_entity = "bull"
+        elif entity == "the_horse":
+            fixed_entity = "horse"
+        else:
+            fixed_entity = entity
+
+        return fixed_entity
     except Exception as e:
         print("🔥 services/graph: [get_closest_entities] failed 🔥", e)
 
@@ -216,10 +223,16 @@ async def get_next_question_topic(user_entity: str, sessionID: str):
             )
         neo4j_entity = await get_closest_entities(subject=user_entity)
         neo4j_topic_list = await get_neo4j_topic_list(sessionID=sessionID)
-
         relevant_topic = await find_most_dense_neighbor_entity(
-            entity_name=neo4j_entity, topic_list=neo4j_topic_list
+            entity_name=neo4j_entity,
+            user_entity=user_entity,
+            topic_list=neo4j_topic_list,
+            count=5,
         )
+        if relevant_topic == None:
+            return Neo4jNode(
+                node_label=[], node_type="", name="", content="", node_id=""
+            )
 
         await add_topic_list(
             sessionID=sessionID, topic_neo4j=relevant_topic.name, topic_user=user_entity

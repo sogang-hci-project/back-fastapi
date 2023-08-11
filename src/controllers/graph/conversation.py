@@ -142,9 +142,9 @@ async def conversation_request_graph_response(
                 sessionID=sessionID,
             )
         )
-        # run_task_in_background(
-        #     generate_pedagogic_strategy(sessionID=sessionID, user=user, agent=agent)
-        # )
+        run_task_in_background(
+            generate_pedagogic_strategy(sessionID=sessionID, user=user, agent=agent)
+        )
         await appendDialogue(sessionID=sessionID, content=agent, role="assistant")
 
     except Exception as e:

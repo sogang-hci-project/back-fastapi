@@ -20,7 +20,7 @@ async def get_student_analysis(
             [TASK]
             You are now an art education supervisor currently supervising conversation between art educator and student about the painting Guernica. 
             As a supervisor, make a three analysis on student's interest, level of engagement, and characteristics to help the art educator.
-            Update and refine [PREVIOUS ANALYSIS] based on the [STUDENT MESSAGE].
+            Generate three short sentence. Update and refine [PREVIOUS ANALYSIS] based on the [STUDENT MESSAGE].
             
             [DIALOGUE]
             {dialogue}
@@ -33,6 +33,7 @@ async def get_student_analysis(
             
             [RULE]
             - Be concise.
+            - Result should be three short sentence IMPORTANT!!
             
             [GOAL]
             Follow the [TASK] and generate three point analysis on the student.
@@ -85,16 +86,16 @@ async def get_directives(
         base_instruction = f"""
             [TASK]
             You are now an screen play supervisor currently supervising role play between the actor as Pablo Picasso and the student about the painting Guernica. 
-            As a supervisor, provide directive on how to respond to student reflecting actor's message in [LATEST MESSAGE].
-            Use anaysis on student provided in [ANALYSIS] to provide directive that matches the student.
-            The goal of directive is to make student immersed into conversation and learn about the painting.          
-            [LATEST MESSAGE] is the result of the [PREVIOUS DIRECTIVE]. Update the directive to increase student engagement.
-            Make a three point directive for the actor.
+            As a supervisor, provide directive on how to respond to student activeness reflecting actor's message in [LAST MESSAGE].
+            Provide three very short directive sentence in terms of (1) tone, (2) word choice, (3) emotion in the response to increase the immersion.
+            Use anaysis on student provided in [ANALYSIS] to provide directive that matches the student.      
+            [LAST MESSAGE] is the result of the [PREVIOUS DIRECTIVE]. Update the directive to increase student engagement.
+            The goal is to make the student feel that they're talking to Pablo Picasso.
             
             [PREVIOUS DIRECTIVE]
             {previous_directives}
             
-            [LATEST MESSAGE]
+            [LAST MESSAGE]
             Student: {user_message}
             Actor: {assistant_message}
             
@@ -103,6 +104,7 @@ async def get_directives(
             
             [RULE]
             - Be concise.
+            - Each sentence should be less then 10 words.
             
             [GOAL]
             Follow the [TASK] and generate three directive for the actor.
@@ -122,8 +124,8 @@ async def get_directives(
 
         print(
             f"""
-              ■■■■■■■■■[EDUCATIONAL DIRECTIVES]■■■■■■■■■
-              {res}
+■■■■■■■■■[DIRECTIVES]■■■■■■■■■
+{res}
               """
         )
 
@@ -336,8 +338,8 @@ async def extract_core_subject(sentence: str, attempt_count: int):
     try:
         base_instruction = """
             [TASK]
-            Given the user sentence, retreive the up to three core keywords in context from the sentence as a python list.
-            Exclude Pablo Picasso from the keyword. RETURN IN [FORMAT].
+            Retreive the up to three core keywords in user sentence as a python diciontary list.
+            Return [FORMAT] provided below.
             [FORMAT]
             [{"keyword": "name"}, {"keyword": "name"}, {"keyword": "name"}]
         """
@@ -488,28 +490,35 @@ async def get_picasso_answer_few_shot_graph_using_entity(
             "While looking at the painting Guernica by Pablo Picasso, " + user_message
         )
         nodes = await retrieve_relevent_nodes_in_string(query_base)
+        next_topic_detail = retreive_node_by_id(next_topic.id)
 
         instruction = f"""
 [TASK]
 You are now acting as the Pablo Picasso, the renowned artist and creator of the masterpiece "Guernica". 
-Make a reply to the user message with following instructions.
-- Make retrospective narrration as Pablo Picasso based on the [PICASSO MEMORY].
-- Reference on following [CONVERSATION MEMORY] and metion about previous interaction with the student.
+Make a reply to the user(student) message with following instructions.
+- Follow [DIRECTIVE] to make the conversation more engaging. 
+- Add retrospective narrration as Pablo Picasso based on the [BACKGROUND].
+- Use [STUDENT CHARACTERISTICS] and metion relevent details about the student if provided.
 - Ask question that implicitly refer to information in the [NEXT_TOPIC] if provided.
 
-[PICASSO MEMORY]
-{event_list}{fact_list}
+[DIRECTIVE]
+{directive}
 
-[CONVERSATION MEMORY]
+[BACKGROUND]
+{event_list}{idea_list}
+
+[STUDENT CHARACTERISTICS]
 {user_event_list}{user_fact_list}{user_idea_list}
 
 [NEXT_TOPIC]
-{next_topic.content}
+Title: {next_topic.content}
+Content: {next_topic_detail}
 
 [RULE]
 - Maxmimum Picasso answer length is 3 sentence. IMPORTANT!!
 - Be concise.
-- Use Easy Word.
+- Use easy word.
+- Ask question at the end.
 
 [GOAL]
 Follow [TASK] and generate a reply as a Pablo Picasso.
@@ -517,16 +526,18 @@ Follow [TASK] and generate a reply as a Pablo Picasso.
 
         print(instruction)
 
+        ##[ISSUE] Change on dev
         messages = (
-            sample_dialogue_for_dev
-            + dialogue
+            # sample_dialogue_for_dev
+            # + dialogue
+            dialogue
             + [{"role": "system", "content": instruction}]
             + [{"role": "user", "content": user_message}]
         )
 
         completion = await openai.ChatCompletion.acreate(
-            # model="gpt-4",
-            model="gpt-3.5-turbo",
+            model="gpt-4",
+            # model="gpt-3.5-turbo",
             messages=messages,
             max_tokens=120,
             temperature=0,
@@ -540,7 +551,7 @@ Follow [TASK] and generate a reply as a Pablo Picasso.
         )
         if attempt_count + 1 == 3:
             print(
-                "🔥 utils/openai/graph: [get_picasso_answer_few_shot_graph_using_entity] max error reache   d🔥"
+                "🔥 utils/openai/graph: [get_picasso_answer_few_shot_graph_using_entity] max error reached🔥"
             )
             return "I'm sorry can you tell me once more?"
         await asyncio.sleep(1)

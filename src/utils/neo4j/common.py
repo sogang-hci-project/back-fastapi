@@ -1,5 +1,9 @@
 import os
 import neo4j
+from src.utils.langchain.common import embed_model
+from src.utils.common import (
+    cosine_similarity,
+)
 
 NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD")
 NEO4J_LINK = os.environ.get("NEO4J_LINK")
@@ -224,19 +228,21 @@ def decide_label_type(labels):
         return "ENTITY"
 
 
-async def find_most_dense_neighbor_entity(entity_name: str, topic_list: list):
+async def find_most_dense_neighbor_entity(
+    entity_name: str, user_entity: str, topic_list: list, count: str
+):
     try:
         exclude_string = ""
         for topic_item in topic_list:
             exclude_string += f'AND middleNode.name <> "{topic_item}" '
 
         query = f"""
-                MATCH (start {{name: "{entity_name}"}})
+                MATCH (startNode {{name: "{entity_name}"}})
                 MATCH (startNode)-[]-(middleNode)-[]-(targetNode)
-                WHERE NOT targetNode:EVENT AND NOT targetNode:FACT AND NOT targetNode:IDEA AND targetNode.name <> "Pablo_Picasso" AND targetNode.name <> "Guernica" {exclude_string}
+                WHERE NOT targetNode:EVENT AND NOT targetNode:FACT AND NOT targetNode:IDEA {exclude_string}
                 WITH targetNode, middleNode, COUNT{{(targetNode)-[]-()}} as relCount
                 ORDER BY relCount DESC
-                LIMIT 1
+                LIMIT {count}
                 RETURN middleNode, labels(middleNode) as labels;
                 """
         # query = f"""
@@ -253,8 +259,26 @@ async def find_most_dense_neighbor_entity(entity_name: str, topic_list: list):
             query,
             database_="neo4j",
         )
-        item = records[0]["middleNode"]
-        labels = records[0]["labels"]
+
+        if len(records) == 0:
+            print(
+                "🔥 utils/neo4j/common/find_most_dense_neighbor_entity: No node found 🔥"
+            )
+            return None
+
+        user_entity_emb = embed_model.get_text_embedding(user_entity)
+        base_similarity = 0
+        key_index = 0
+
+        for i, record in enumerate(records):
+            node_emb = record["middleNode"]._properties["embedding"]
+            similarity = cosine_similarity(user_entity_emb, node_emb)
+            if similarity > base_similarity:
+                base_similarity = similarity
+                key_index = i
+
+        item = records[key_index]["middleNode"]
+        labels = records[key_index]["labels"]
 
         item_summary = (
             item._properties["summary"] if "summary" in item._properties else ""
@@ -273,7 +297,15 @@ async def find_most_dense_neighbor_entity(entity_name: str, topic_list: list):
         )
 
         # print("■■■■■■■■■[Next Topic To Discuss]■■■■■■■■■")
-        # print(item)
+        # print(
+        #     item,
+        #     "key index",
+        #     key_index,
+        #     "similarity",
+        #     base_similarity,
+        #     "keyword",
+        #     entity_name,
+        # )
 
         return item
 
